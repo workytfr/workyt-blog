@@ -1,0 +1,1219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Thème : clair par défaut, sombre avec html.dark (bouton de l'en-tête) ───
+   Valeurs « r g b » pour les opacités de Tailwind (text-ink/60…). */
+:root {
+    --c-ink: 26 21 18;
+    --c-paper: 253 250 244;
+    --c-paper2: 245 239 227;
+    --c-surface: 255 255 255;
+    --c-night: 26 21 18;
+    --c-peach: 255 227 207;
+    --c-skysoft: 207 233 246;
+    --c-cream: 255 241 214;
+    --c-postit: 255 243 214;
+    color-scheme: light;
+}
+html.dark {
+    --c-ink: 243 236 226;
+    --c-paper: 22 18 15;
+    --c-paper2: 37 31 26;
+    --c-surface: 31 26 22;
+    --c-night: 42 34 28;
+    --c-peach: 74 45 29;
+    --c-skysoft: 27 52 64;
+    --c-cream: 64 50 29;
+    --c-postit: 56 45 27;
+    color-scheme: dark;
+}
+/* Texte posé sur une couleur vive qui reste claire (jaune, vert, pastille de rubrique claire) : reste foncé */
+html.dark :is(.bg-sun, .bg-leaf, .bg-sky, .wk-on-light) {
+    --c-ink: 26 21 18;
+}
+
+/* Jetons et briques visuelles de workyt.fr, repris pour le blog */
+@layer components {
+    .chip {
+        @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold;
+    }
+    .btn-orange {
+        @apply inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-accent font-semibold text-white transition-transform hover:-translate-y-px;
+        box-shadow: 0 3px 0 #c24a0a, 0 8px 20px rgba(255, 106, 26, 0.28);
+    }
+    .btn-ink {
+        @apply inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-ink font-semibold text-white;
+    }
+    .btn-ghost {
+        @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-ink/10 bg-white font-semibold;
+    }
+    .eyebrow {
+        @apply font-mono text-[10px] uppercase tracking-[0.18em] text-ink/45;
+    }
+    .cat-pill {
+        @apply inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em];
+    }
+    .lab {
+        @apply font-mono text-[11px] font-semibold uppercase tracking-[0.18em];
+    }
+    .widget {
+        @apply rounded-[24px] border border-ink/10 bg-white p-[22px];
+    }
+    .widget-title {
+        @apply font-display text-[21px];
+    }
+    .widget-title::after,
+    .section-title::after {
+        content: "";
+        display: block;
+        width: 36px;
+        height: 3px;
+        margin-top: 8px;
+        border-radius: 99px;
+        background: linear-gradient(90deg, #ff6a1a, #ffb547);
+    }
+    /* Crédit d'image : obligatoire sur toutes les images (cahier des charges § 8.4) */
+    .credit {
+        @apply absolute bottom-3.5 right-3.5 inline-flex items-center gap-[7px] rounded-full py-1.5 pl-2 pr-3 text-[11.5px] font-semibold text-ink;
+        background: rgb(var(--c-paper) / 0.94);
+        box-shadow: 0 4px 14px rgba(26, 21, 18, 0.12);
+        backdrop-filter: blur(6px);
+    }
+}
+
+/* Contenu d'un article */
+.post-content {
+    color: rgb(var(--c-ink) / 0.92);
+}
+.post-content > * + * {
+    margin-top: 20px;
+}
+.post-content p,
+.post-content li {
+    font-size: 17.5px;
+    line-height: 1.85;
+}
+.post-content > p.lead::first-letter {
+    float: left;
+    font-family: var(--font-funnel-display), sans-serif;
+    font-size: 64px;
+    line-height: 0.9;
+    margin: 6px 10px 0 0;
+    color: #ff6a1a;
+}
+.post-content h2 {
+    /* « Chapitre de cahier » : grand numéro en contour orange + coup de surligneur jaune */
+    counter-increment: wk-h2;
+    position: relative;
+    padding-left: 66px;
+    font-family: var(--font-funnel-display), system-ui, sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-top: 52px;
+    margin-bottom: 16px;
+    color: rgb(var(--c-ink));
+}
+.post-content h2::before {
+    content: counter(wk-h2, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: -0.06em;
+    font-size: 46px;
+    line-height: 1;
+    /* Même jaune que le surligneur du titre */
+    color: transparent;
+    -webkit-text-stroke: 2px #ffb547;
+}
+.post-content h2 .wk-h {
+    /* Surligneur en biais, ligne par ligne si le titre est long */
+    padding: 0 0.18em;
+    margin: 0 -0.08em;
+    background: linear-gradient(104deg, transparent 0.25em, rgb(255 181 71 / 0.85) 0.42em, rgb(255 181 71 / 0.78) calc(100% - 0.55em), transparent calc(100% - 0.3em)) 0 88% / 100% 0.55em no-repeat;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+.post-content h3 {
+    /* Sous-partie : décalée sous le texte du H2, flèche orange, souligné « à la main » */
+    position: relative;
+    padding-left: 66px;
+    font-family: var(--font-funnel-display), system-ui, sans-serif;
+    font-size: 23px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-top: 34px;
+    margin-bottom: 12px;
+    color: rgb(var(--c-ink));
+}
+.post-content h3::before {
+    content: "→";
+    position: absolute;
+    left: 30px;
+    color: #ff6a1a;
+}
+.post-content h3 .wk-h {
+    padding-bottom: 7px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 12' preserveAspectRatio='none'%3E%3Cpath d='M2 8 C 60 2, 110 11, 170 6 S 260 3, 298 7' fill='none' stroke='%23ff6a1a' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E") 0 100% / 100% 9px no-repeat;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+/* Numérotation continue sur tout l'article (et dans l'éditeur) */
+.wk-counter,
+.wk-editor {
+    counter-reset: wk-h2;
+}
+@media (max-width: 640px) {
+    .post-content h2 {
+        padding-left: 48px;
+        font-size: 27px;
+    }
+    .post-content h2::before {
+        font-size: 36px;
+    }
+    .post-content h3 {
+        padding-left: 48px;
+        font-size: 21px;
+    }
+    .post-content h3::before {
+        left: 16px;
+    }
+}
+.post-content a {
+    color: #c24a0a;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+}
+.post-content ul {
+    list-style: disc;
+    padding-left: 1.4em;
+}
+.post-content ol {
+    list-style: decimal;
+    padding-left: 1.4em;
+}
+/* Sommaire en tête d'article : carte « cahier » tenue par un bout de scotch, repliable */
+.post-content .wk-toc {
+    position: relative;
+    margin: 12px 0 44px;
+    padding: 22px 26px 14px;
+    background: rgb(var(--c-paper2));
+    border-radius: 24px;
+}
+.post-content .wk-toc::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 30px;
+    width: 80px;
+    height: 20px;
+    background: rgb(110 193 228 / 0.45);
+    border-radius: 3px;
+    transform: rotate(-2deg);
+}
+.post-content .wk-toc summary {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding-bottom: 6px;
+    cursor: pointer;
+    list-style: none;
+}
+.post-content .wk-toc summary::-webkit-details-marker {
+    display: none;
+}
+.post-content .wk-toc summary::after {
+    content: "Masquer ▴";
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgb(var(--c-ink) / 0.5);
+}
+.post-content .wk-toc:not([open]) summary::after {
+    content: "Afficher ▾";
+}
+.post-content .wk-toc:not([open]) summary {
+    padding-bottom: 8px;
+}
+.wk-toc-title {
+    font-family: var(--font-funnel-display), system-ui, sans-serif;
+    font-size: 21px;
+    font-weight: 600;
+    color: rgb(var(--c-ink));
+}
+.wk-toc-meta {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgb(var(--c-ink) / 0.45);
+}
+.post-content .wk-toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.post-content .wk-toc li {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.4;
+}
+.post-content .wk-toc li.wk-toc-h2 + li.wk-toc-h2,
+.post-content .wk-toc li.wk-toc-h3 + li.wk-toc-h2 {
+    border-top: 1px dashed rgb(var(--c-ink) / 0.15);
+}
+.post-content .wk-toc a {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 0;
+    color: rgb(var(--c-ink));
+    font-weight: 600;
+    text-decoration: none;
+}
+.post-content .wk-toc a:hover {
+    color: #c24a0a;
+}
+.wk-toc-n {
+    /* Même numéro que le titre de la partie (contour jaune du surligneur) */
+    min-width: 28px;
+    font-family: var(--font-funnel-display), system-ui, sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: transparent;
+    -webkit-text-stroke: 1.4px #f5a524;
+}
+.post-content .wk-toc li.wk-toc-h3 a {
+    gap: 8px;
+    padding: 2px 0 7px 40px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgb(var(--c-ink) / 0.65);
+}
+.post-content .wk-toc li.wk-toc-h3 a::before {
+    content: "→";
+    color: #ff6a1a;
+}
+/* Lien vers une partie : le titre s'arrête sous la barre de navigation collante */
+.post-content :is(h2, h3)[id],
+#sommaire {
+    scroll-margin-top: 110px;
+}
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
+}
+@media (max-width: 640px) {
+    .post-content .wk-toc {
+        padding: 20px 18px 12px;
+    }
+    .post-content .wk-toc li.wk-toc-h3 a {
+        padding-left: 40px;
+    }
+}
+
+/* Citation : post-it jaune pâle tenu par un bout de scotch (version légère : pur CSS) */
+.post-content blockquote {
+    position: relative;
+    margin: 38px 6px 30px;
+    padding: 30px 26px 22px;
+    background: rgb(var(--c-postit));
+    border-radius: 4px 4px 18px 4px;
+    transform: rotate(-0.6deg);
+    box-shadow: 0 8px 18px rgb(26 21 18 / 0.06);
+    font-family: var(--font-funnel-display), sans-serif;
+    font-size: 22px;
+    line-height: 1.4;
+    color: rgb(var(--c-ink));
+}
+/* Deux post-its de suite ne penchent pas du même côté */
+.post-content blockquote:nth-of-type(even) {
+    transform: rotate(0.5deg);
+}
+.post-content blockquote::before {
+    content: "";
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    width: 84px;
+    height: 22px;
+    transform: translateX(-50%) rotate(2deg);
+    background: rgb(110 193 228 / 0.42);
+    border-radius: 3px;
+}
+.post-content blockquote p {
+    margin: 0;
+    /* Le style des paragraphes de l'article ne s'applique pas dans le post-it */
+    font: inherit;
+    color: inherit;
+}
+.post-content blockquote p + p {
+    margin-top: 0.5em;
+}
+.post-content blockquote p:first-child::before {
+    content: "« ";
+    color: #ff6a1a;
+}
+.post-content blockquote p:last-of-type::after {
+    content: " »";
+    color: #ff6a1a;
+}
+/* Auteur de la citation (articles repris de WordPress) */
+.post-content blockquote cite {
+    display: block;
+    margin-top: 10px;
+    font-family: var(--font-montserrat), sans-serif;
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 600;
+    color: rgb(var(--c-ink) / 0.6);
+}
+/* Dans l'éditeur et sur mobile : droit, pour écrire et lire sans gêne */
+.wk-editor blockquote,
+.wk-editor blockquote:nth-of-type(even) {
+    transform: none;
+}
+@media (max-width: 640px) {
+    .post-content blockquote,
+    .post-content blockquote:nth-of-type(even) {
+        transform: none;
+        margin-left: 0;
+        margin-right: 0;
+        font-size: 20px;
+    }
+}
+.post-content figure img,
+.post-content > img {
+    border-radius: 24px;
+    width: 100%;
+    height: auto;
+}
+.post-content figcaption {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 13px;
+    color: rgb(var(--c-ink) / 0.5);
+}
+.post-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+}
+.post-content th,
+.post-content td {
+    border: 1px solid rgb(var(--c-ink) / 0.12);
+    padding: 8px 12px;
+    text-align: left;
+}
+.post-content th {
+    background: rgb(var(--c-paper2));
+}
+.post-content iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 20px;
+}
+
+/* ─── Accueil en grille de cartes : encoches arrondies (coins creusés) ─── */
+/* Panneau en bas à gauche d'une carte photo, qui « mord » dans l'image */
+.notch-bl {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    background: rgb(var(--c-paper));
+    border-top-right-radius: 30px;
+}
+.notch-bl::before,
+.notch-bl::after {
+    content: "";
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle at 100% 0, transparent 29.5px, rgb(var(--c-paper)) 30px);
+}
+.notch-bl::before {
+    left: 0;
+    bottom: 100%;
+}
+.notch-bl::after {
+    left: 100%;
+    bottom: 0;
+}
+/* Pastille en haut à droite d'une carte (bouton flèche dans un coin creusé) */
+.notch-tr {
+    position: absolute;
+    right: 0;
+    top: 0;
+    background: rgb(var(--c-paper));
+    border-bottom-left-radius: 26px;
+    padding: 0 0 8px 8px;
+}
+.notch-tr::before,
+.notch-tr::after {
+    content: "";
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    background: radial-gradient(circle at 0 100%, transparent 25.5px, rgb(var(--c-paper)) 26px);
+}
+.notch-tr::before {
+    right: 100%;
+    top: 0;
+}
+.notch-tr::after {
+    right: 0;
+    top: 100%;
+}
+/* Chiffre en contour (classement « Le top ») */
+.outline-num {
+    font-family: var(--font-funnel-display), sans-serif;
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgb(var(--c-ink) / 0.25);
+}
+
+/* ─── Blocs de l'éditeur, côté public ─── */
+.post-content .wk-figure {
+    margin-top: 28px;
+}
+.post-content .wk-figure-media {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    background: rgb(var(--c-paper2));
+}
+.post-content .wk-figure-media img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0;
+}
+/* Crédit dans l'image : même pastille que partout (cahier des charges § 8.4) */
+.post-content .credit {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    padding: 6px 12px 6px 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: rgb(var(--c-ink));
+    background: rgb(var(--c-paper) / 0.94);
+    box-shadow: 0 4px 14px rgba(26, 21, 18, 0.12);
+}
+.post-content .credit::before {
+    content: "";
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #ff6a1a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z'/><circle cx='12' cy='13' r='3'/></svg>") center / 11px no-repeat;
+}
+.post-content .credit-lic {
+    font-weight: 500;
+    color: rgb(var(--c-ink) / 0.5);
+}
+@media (max-width: 639px) {
+    .post-content .credit-lic {
+        display: none;
+    }
+}
+
+/* Encadrés */
+.post-content .wk-callout {
+    position: relative;
+    margin-top: 28px;
+    border-radius: 22px;
+    padding: 46px 22px 18px;
+    background: rgb(var(--c-surface));
+    border: 1px solid rgb(var(--c-ink) / 0.08);
+}
+.post-content .wk-callout > * + * {
+    margin-top: 10px;
+}
+.post-content .wk-callout::before {
+    position: absolute;
+    left: 22px;
+    top: 16px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+.post-content .wk-callout--info { background: #eef7fc; border-color: #cfe9f6; }
+.post-content .wk-callout--info::before { content: "Bon à savoir"; color: #2f86b3; }
+.post-content .wk-callout--astuce { background: #f1f9ea; border-color: #d9efc8; }
+.post-content .wk-callout--astuce::before { content: "Astuce"; color: #3f8a1f; }
+.post-content .wk-callout--attention { background: #fdf0f0; border-color: #f3c7c9; }
+.post-content .wk-callout--attention::before { content: "Attention"; color: #c2272d; }
+.post-content .wk-callout--definition { background: #fff4ec; border-color: #ffd9c2; }
+.post-content .wk-callout--definition::before { content: "Définition"; color: #c24a0a; }
+.post-content .wk-callout--exemple { background: #fff8e8; border-color: #ffe7a8; }
+.post-content .wk-callout--exemple::before { content: "Exemple"; color: #a0650a; }
+.post-content .wk-callout--retenir { background: rgb(var(--c-night)); border-color: rgb(var(--c-night)); color: #fdfaf4; --c-ink: 253 250 244; }
+.post-content .wk-callout--retenir::before { content: "À retenir"; color: #ffb547; }
+
+/* Mode sombre : encadrés colorés en teinte foncée */
+html.dark .post-content .wk-callout--info { background: rgb(110 193 228 / 0.12); border-color: rgb(110 193 228 / 0.3); }
+html.dark .post-content .wk-callout--info::before { color: #8fd0ec; }
+html.dark .post-content .wk-callout--astuce { background: rgb(126 217 87 / 0.1); border-color: rgb(126 217 87 / 0.28); }
+html.dark .post-content .wk-callout--astuce::before { color: #9be27a; }
+html.dark .post-content .wk-callout--attention { background: rgb(239 68 68 / 0.12); border-color: rgb(239 68 68 / 0.3); }
+html.dark .post-content .wk-callout--attention::before { color: #ff8a8f; }
+html.dark .post-content .wk-callout--definition { background: rgb(255 106 26 / 0.12); border-color: rgb(255 106 26 / 0.3); }
+html.dark .post-content .wk-callout--definition::before { color: #ff9a5e; }
+html.dark .post-content .wk-callout--exemple { background: rgb(255 181 71 / 0.12); border-color: rgb(255 181 71 / 0.3); }
+html.dark .post-content .wk-callout--exemple::before { color: #ffc670; }
+html.dark .post-content a { color: #ff8a4c; }
+html.dark .post-content > p.lead::first-letter { color: #ff8a4c; }
+html.dark .post-content .wk-toc a:hover { color: #ff8a4c; }
+
+/* Listes de tâches */
+.post-content ul[data-type="taskList"] {
+    list-style: none;
+    padding-left: 0;
+}
+.post-content ul[data-type="taskList"] li {
+    display: flex;
+    gap: 10px;
+}
+.post-content ul[data-type="taskList"] input {
+    margin-top: 8px;
+    accent-color: #ff6a1a;
+}
+
+/* Vidéo, code, formules */
+.post-content .wk-video iframe,
+.post-content div[data-youtube-video] iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    border-radius: 20px;
+}
+.post-content pre {
+    overflow-x: auto;
+    border-radius: 18px;
+    background: rgb(var(--c-night));
+    color: #fdfaf4;
+    padding: 18px 20px;
+    font-size: 14px;
+}
+.post-content .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 0;
+}
+.post-content mark {
+    background: #ffe7a8;
+    border-radius: 4px;
+    padding: 0 3px;
+}
+
+/* ─── Éditeur de la rédaction ─── */
+.wk-editor {
+    min-height: 50vh;
+    padding-bottom: 30vh;
+}
+.wk-editor > * + * {
+    margin-top: 0;
+}
+.wk-editor p.is-empty::before,
+.wk-editor h2.is-empty::before,
+.wk-editor h3.is-empty::before,
+.wk-editor h4.is-empty::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: rgb(26 21 18 / 0.3);
+}
+.wk-editor .ProseMirror-selectednode:not(.react-renderer) {
+    outline: 2px solid #ff6a1a;
+    outline-offset: 4px;
+    border-radius: 12px;
+}
+.wk-editor .ProseMirror-gapcursor::after {
+    border-top-color: #ff6a1a;
+}
+.wk-editor table .selectedCell {
+    background: rgb(255 106 26 / 0.12);
+}
+.wk-editor table .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #ff6a1a;
+    pointer-events: none;
+}
+.wk-editor .tableWrapper {
+    overflow-x: auto;
+}
+.wk-callout--editing {
+    position: relative;
+}
+.wk-callout--editing::before {
+    display: none;
+}
+.wk-callout-select {
+    margin-bottom: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgb(26 21 18 / 0.15);
+    background: rgb(255 255 255 / 0.7);
+    padding: 0.15rem 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.wk-callout-body > * + * {
+    margin-top: 0.6em;
+}
+.wk-editor ul[data-type="taskList"] li > label {
+    user-select: none;
+}
+.drag-handle,
+[data-drag-handle-wrapper] {
+    transition: opacity 0.15s;
+}
+.ProseMirror-hideselection *::selection {
+    background: transparent;
+}
+
+/* Logo du site visé, à droite du texte d'un lien */
+.post-content .wk-fav {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin: 0 0 0 5px;
+    vertical-align: -2px;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgb(26 21 18 / 0.08);
+    object-fit: contain;
+}
+
+/* ─── Relecture (lot 3) : suggestions et passages commentés, dans l'éditeur ─── */
+.wk-editor ins.wk-sugg--ins {
+    text-decoration: none;
+    background: rgb(126 217 87 / 0.32);
+    color: #22560f;
+    border-bottom: 2px solid #5fb83a;
+    border-radius: 3px;
+}
+.wk-editor del.wk-sugg--del {
+    background: rgb(239 68 68 / 0.12);
+    color: #b91c1c;
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+    border-radius: 3px;
+}
+.wk-editor .wk-comment {
+    background: rgb(255 181 71 / 0.28);
+    border-bottom: 2px solid #ffb547;
+    cursor: pointer;
+}
+.wk-editor[contenteditable="false"] {
+    cursor: default;
+}
+
+/* Fond pointillé des en-têtes de profil (comme workyt.fr) */
+.wk-dotgrid {
+    background-image: radial-gradient(rgba(26, 21, 18, 0.12) 1px, transparent 1px);
+    background-size: 18px 18px;
+}
+
+
+/* ─── Modules (lot 4) ─── */
+/* Lien affilié : mention « sponsorisé » collée au lien */
+.post-content .wk-aff {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgb(255 181 71 / 0.25);
+    color: #8a560a;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: 2px;
+    text-decoration: none;
+}
+/* Appels de source [n] */
+.post-content sup.wk-cite a {
+    margin-left: 1px;
+    color: #c24a0a;
+    font-size: 0.72em;
+    font-weight: 700;
+    text-decoration: none;
+}
+.post-content sup.wk-cite a:hover {
+    text-decoration: underline;
+}
+/* Imprimer la recette : seule la carte recette */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .wk-recipe,
+    .wk-recipe * {
+        visibility: visible;
+    }
+    .wk-recipe {
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        margin: 0;
+        border: 0;
+    }
+}
+
+/* Assistant SEO : « Voir » met le bloc concerné en évidence un instant */
+.wk-editor .wk-flash {
+    border-radius: 8px;
+    animation: wk-flash 1.6s ease-out;
+}
+@keyframes wk-flash {
+    0%,
+    40% {
+        background: rgb(255 181 71 / 0.45);
+        box-shadow: 0 0 0 6px rgb(255 181 71 / 0.45);
+    }
+    100% {
+        background: transparent;
+        box-shadow: 0 0 0 6px transparent;
+    }
+}
+
+/* ─── Page 404 : le renard et les moutons (SVG animé, ~8 s) ───
+   État de base = fin de l'histoire (champ vide, panneau posé) : c'est ce
+   qu'on voit sans animation. Les animations jouent l'histoire depuis le début. */
+.wk-fox-scene {
+    --wk-fs: 8s;
+}
+.wk-fox-scene .wk-fs-sheep,
+.wk-fox-scene .wk-fs-puff,
+.wk-fox-scene .wk-fs-alert {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    opacity: 0;
+}
+.wk-fox-scene .wk-fs-sheep {
+    transform: scale(0);
+}
+.wk-fox-scene .wk-fs-fox {
+    transform: translateX(1160px);
+}
+.wk-fox-scene .wk-fs-graze {
+    transform-box: fill-box;
+    transform-origin: 80% 20%;
+}
+.wk-fox-scene .wk-fs-sign {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+}
+.wk-fox-scene .wk-fs-replay {
+    display: flex;
+    width: fit-content;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .wk-fox-scene .wk-fs-fox {
+        animation: wk-fs-fox var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-bounce {
+        animation: wk-fs-bounce 0.32s ease-in-out infinite alternate;
+    }
+    .wk-fox-scene .wk-fs-leg-a {
+        transform-box: fill-box;
+        transform-origin: 50% 0;
+        animation: wk-fs-leg 0.32s ease-in-out infinite alternate;
+    }
+    .wk-fox-scene .wk-fs-leg-b {
+        transform-box: fill-box;
+        transform-origin: 50% 0;
+        animation: wk-fs-leg 0.32s ease-in-out infinite alternate-reverse;
+    }
+    .wk-fox-scene .wk-fs-tuft {
+        animation: wk-fs-tuft var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-graze {
+        animation: wk-fs-graze 1.4s ease-in-out infinite alternate;
+    }
+    .wk-fox-scene .wk-fs-sheep-1 {
+        animation: wk-fs-sheep-1 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-sheep-2 {
+        animation: wk-fs-sheep-2 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-sheep-3 {
+        animation: wk-fs-sheep-3 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-alert-1 {
+        animation: wk-fs-alert-1 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-alert-2 {
+        animation: wk-fs-alert-2 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-alert-3 {
+        animation: wk-fs-alert-3 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-puff-1 {
+        animation: wk-fs-puff-1 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-puff-2 {
+        animation: wk-fs-puff-2 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-puff-3 {
+        animation: wk-fs-puff-3 var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-sign {
+        animation: wk-fs-sign var(--wk-fs) both;
+    }
+    .wk-fox-scene .wk-fs-cloud {
+        animation: wk-fs-cloud 14s ease-in-out infinite alternate;
+    }
+    .wk-fox-scene .wk-fs-cloud-2 {
+        animation-duration: 18s;
+        animation-direction: alternate-reverse;
+    }
+    .wk-fox-scene .wk-fs-replay {
+        animation: wk-fs-fade var(--wk-fs) both;
+    }
+}
+
+/* Le renard : sort du buisson, s'arrête à chaque mouton, repart à droite */
+@keyframes wk-fs-fox {
+    0%,
+    14% {
+        transform: translateX(-260px);
+    }
+    24%,
+    30% {
+        transform: translateX(146px);
+    }
+    40%,
+    46% {
+        transform: translateX(366px);
+    }
+    56%,
+    62% {
+        transform: translateX(586px);
+    }
+    80%,
+    100% {
+        transform: translateX(1160px);
+    }
+}
+@keyframes wk-fs-bounce {
+    to {
+        transform: translateY(-7px);
+    }
+}
+@keyframes wk-fs-leg {
+    from {
+        transform: rotate(-22deg);
+    }
+    to {
+        transform: rotate(22deg);
+    }
+}
+@keyframes wk-fs-tuft {
+    0%,
+    27% {
+        opacity: 0;
+    }
+    28%,
+    100% {
+        opacity: 1;
+    }
+}
+@keyframes wk-fs-graze {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(-14deg) translateY(4px);
+    }
+}
+/* Un mouton : broute, sursaute, disparaît (attrapé) */
+@keyframes wk-fs-sheep-1 {
+    0%,
+    22% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    25% {
+        opacity: 1;
+        transform: translateY(-16px) scale(1.05);
+    }
+    27% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    29%,
+    100% {
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+@keyframes wk-fs-sheep-2 {
+    0%,
+    38% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    41% {
+        opacity: 1;
+        transform: translateY(-16px) scale(1.05);
+    }
+    43% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    45%,
+    100% {
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+@keyframes wk-fs-sheep-3 {
+    0%,
+    54% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    57% {
+        opacity: 1;
+        transform: translateY(-16px) scale(1.05);
+    }
+    59% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    61%,
+    100% {
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+@keyframes wk-fs-alert-1 {
+    0%,
+    21%,
+    28%,
+    100% {
+        opacity: 0;
+    }
+    22%,
+    27% {
+        opacity: 1;
+    }
+}
+@keyframes wk-fs-alert-2 {
+    0%,
+    37%,
+    44%,
+    100% {
+        opacity: 0;
+    }
+    38%,
+    43% {
+        opacity: 1;
+    }
+}
+@keyframes wk-fs-alert-3 {
+    0%,
+    53%,
+    60%,
+    100% {
+        opacity: 0;
+    }
+    54%,
+    59% {
+        opacity: 1;
+    }
+}
+@keyframes wk-fs-puff-1 {
+    0%,
+    27% {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    36%,
+    100% {
+        opacity: 0;
+        transform: scale(1.7) translateY(-12px);
+    }
+}
+@keyframes wk-fs-puff-2 {
+    0%,
+    43% {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+    46% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    52%,
+    100% {
+        opacity: 0;
+        transform: scale(1.7) translateY(-12px);
+    }
+}
+@keyframes wk-fs-puff-3 {
+    0%,
+    59% {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+    62% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    68%,
+    100% {
+        opacity: 0;
+        transform: scale(1.7) translateY(-12px);
+    }
+}
+/* Le panneau 404 tombe sur la clôture et se balance */
+@keyframes wk-fs-sign {
+    0%,
+    80% {
+        opacity: 0;
+        transform: translateY(-160px);
+    }
+    86% {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg);
+    }
+    90% {
+        transform: rotate(-7deg);
+    }
+    94% {
+        transform: rotate(4deg);
+    }
+    100% {
+        opacity: 1;
+        transform: rotate(0deg);
+    }
+}
+@keyframes wk-fs-cloud {
+    to {
+        transform: translateX(40px);
+    }
+}
+@keyframes wk-fs-fade {
+    0%,
+    85% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Mode sombre : sommaire et titres d'article */
+html.dark .post-content .wk-toc a {
+    color: rgb(var(--c-ink));
+}
+html.dark .post-content .wk-toc a:hover {
+    color: #ff8a4c;
+}
+html.dark .post-content .wk-toc li.wk-toc-h3 a {
+    color: rgb(var(--c-ink) / 0.65);
+}
+/* Surligneur plus doux sous un texte clair */
+html.dark .post-content h2 .wk-h {
+    background-image: linear-gradient(104deg, transparent 0.25em, rgb(255 181 71 / 0.38) 0.42em, rgb(255 181 71 / 0.32) calc(100% - 0.55em), transparent calc(100% - 0.3em));
+}
+
+/* Mode sombre : couleurs fixes de la palette, éclaircies pour rester lisibles
+   (orange foncé, verts, rouges, encadrés « On aime moins », badges) */
+html.dark .text-accentdark,
+html.dark .hover\:text-accentdark:hover,
+html.dark .group:hover .group-hover\:text-accentdark {
+    color: #ff8a4c;
+}
+html.dark :is(.text-\[\#2f6e14\], .text-\[\#3f8a1f\]) {
+    color: #9be27a;
+}
+html.dark .text-\[\#2f86b3\] {
+    color: #8fd0ec;
+}
+html.dark .text-\[\#9b6ef3\] {
+    color: #c3a6ff;
+}
+html.dark .text-\[\#a0650a\] {
+    color: #ffc670;
+}
+html.dark :is(.text-red-600, .text-red-700) {
+    color: #ff8a8f;
+}
+html.dark .bg-red-50 {
+    background-color: rgb(239 68 68 / 0.14);
+}
+html.dark .bg-leaf\/15 {
+    background-color: rgb(126 217 87 / 0.12);
+}
+
+/* ─── Réactions : le renard Workyt, une animation par expression ───
+   Jouée au survol et quand la réaction est choisie. */
+.wk-rx * {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--love .wk-rx-pop { animation: wk-rx-beat 0.9s ease-in-out infinite; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--love .wk-rx-float { animation: wk-rx-float 1.6s ease-out infinite; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--sad .wk-rx-tear { animation: wk-rx-tear 1.4s ease-in infinite; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--happy { animation: wk-rx-hop 0.7s ease-in-out infinite; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--sleep .wk-rx-z { animation: wk-rx-float 2s ease-out infinite; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--angry { animation: wk-rx-shake 0.45s linear infinite; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--angry .wk-rx-vein { animation: wk-rx-beat 0.6s ease-in-out infinite; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--dead { animation: wk-rx-tilt 1.6s ease-in-out infinite alternate; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--dead .wk-rx-halo { animation: wk-rx-halo 1.6s ease-in-out infinite alternate; }
+    .wk-rx-btn:is(:hover, [aria-pressed="true"]) .wk-rx--wink .wk-rx-spark { animation: wk-rx-spin 1.8s linear infinite; }
+}
+@keyframes wk-rx-beat {
+    50% { transform: scale(1.28); }
+}
+@keyframes wk-rx-float {
+    0% { opacity: 0; transform: translateY(6px) scale(0.7); }
+    30% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-10px) scale(1.1); }
+}
+@keyframes wk-rx-tear {
+    0% { opacity: 0; transform: translateY(-3px); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(12px); }
+}
+@keyframes wk-rx-hop {
+    50% { transform: translateY(-4px) rotate(-4deg); }
+}
+@keyframes wk-rx-shake {
+    25% { transform: translateX(-1.5px) rotate(-3deg); }
+    75% { transform: translateX(1.5px) rotate(3deg); }
+}
+@keyframes wk-rx-tilt {
+    to { transform: rotate(-14deg); }
+}
+@keyframes wk-rx-halo {
+    to { transform: translateY(-2px); }
+}
+@keyframes wk-rx-spin {
+    to { transform: rotate(360deg) scale(1.15); }
+}

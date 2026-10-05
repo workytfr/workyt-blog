@@ -1,0 +1,25 @@
+# Dépendances
+/node_modules
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Divers
+.DS_Store
+npm-debug.log*
+
+# Variables d'environnement (secrets) : seul .env.example est versionné
+.env
+.env*.local
+.env.production
+.env.development
+
+# Maquettes et captures de travail (non versionnées)
+/maquettes/
+/docs/captures-lot1/
+
+# Images envoyées en local (sans R2)
+/public/uploads-dev/
