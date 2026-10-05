@@ -79,7 +79,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
         <BlogEditor
             post={data}
             categories={cats.map((c) => ({ id: String(c._id), name: c.name, color: c.color || "#ff6a1a", parentId: c.parent ? String(c.parent) : null }))}
-            me={{ id: actor.memberId, name: actor.name }}
+            me={{ id: actor.memberId, name: actor.name, admin: actor.role === "admin" }}
             initialReview={review}
             team={team}
         />

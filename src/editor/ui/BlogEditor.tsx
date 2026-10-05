@@ -3,6 +3,7 @@
 import "katex/dist/katex.min.css";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
@@ -49,6 +50,7 @@ import type { MediaView } from "@/lib/media";
 import { editorExtensions } from "./editorExtensions";
 import { PICK_IMAGE_EVENT } from "./slash";
 import MediaPicker from "./MediaPicker";
+import TableMenu from "./TableMenu";
 import SidePanel, { type PanelState, type PanelTab } from "./SidePanel";
 import ReviewPanel, { type PendingAnchor } from "./ReviewPanel";
 import { SUGGEST_INTERNAL, setSuggesting } from "./suggestMode";
@@ -84,7 +86,8 @@ const PRIMARY: WorkflowAction[] = ["approve", "publish", "validate", "take", "su
  * (lot 3) : boutons d'étape, mode suggestion du correcteur, commentaires,
  * versions, présence et verrou d'édition.
  */
-export default function BlogEditor({ post, categories, me, initialReview, team }: { post: EditorPost; categories: EditorCategory[]; me: { id: string; name: string }; initialReview: ReviewState; team: TeamMember[] }) {
+export default function BlogEditor({ post, categories, me, initialReview, team }: { post: EditorPost; categories: EditorCategory[]; me: { id: string; name: string; admin?: boolean }; initialReview: ReviewState; team: TeamMember[] }) {
+    const router = useRouter();
     const [title, setTitle] = useState(post.title === "Sans titre" ? "" : post.title);
     const [meta, setMeta] = useState<PanelState>({
         slug: post.slug,
@@ -539,6 +542,27 @@ export default function BlogEditor({ post, categories, me, initialReview, team }
                                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ActionIcon action={primary} />} {ACTION_LABELS[primary]}
                             </button>
                         )}
+                        {/* Article à la corbeille : suppression définitive (Admin), double confirmation */}
+                        {status === "trash" && me.admin && (
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={async () => {
+                                    if (!window.confirm(`Supprimer définitivement « ${title || "Sans titre"} » ?
+
+Le texte, les versions, les commentaires et les réactions seront effacés. C'est irréversible.`)) return;
+                                    if (window.prompt("Pour confirmer, écris SUPPRIMER")?.trim().toUpperCase() !== "SUPPRIMER") return;
+                                    const j = await fetch(`/api/posts/${post.id}/`, { method: "DELETE" })
+                                        .then((r) => r.json())
+                                        .catch(() => ({ success: false, error: "Connexion impossible." }));
+                                    if (j.success) router.push("/dashboard/articles/?vue=corbeille");
+                                    else window.alert(j.error || "Suppression impossible.");
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                                <Trash2 className="h-4 w-4" /> Supprimer définitivement
+                            </button>
+                        )}
                         {review.actions.includes("trash") && (
                             <button type="button" onClick={() => onAction("trash")} disabled={busy} className="grid h-9 w-9 place-items-center rounded-full text-ink/45 hover:bg-red-50 hover:text-red-700" title="Mettre à la corbeille" aria-label="Mettre à la corbeille">
                                 <Trash2 className="h-4 w-4" />
@@ -655,6 +679,7 @@ export default function BlogEditor({ post, categories, me, initialReview, team }
                                         <BlockHandle editor={editor} target={() => hovered.current} />
                                     </DragHandle>
                                 )}
+                                {review.mode === "edit" && canWrite && <TableMenu editor={editor} />}
                                 <BubbleMenu editor={editor} shouldShow={({ editor: e, state }) => !state.selection.empty && !e.isActive("image")}>
                                     <BubbleBar
                                         editor={editor}

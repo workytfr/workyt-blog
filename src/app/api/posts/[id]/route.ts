@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { savePost } from "@/lib/posts";
+import { deletePostForever } from "@/lib/review";
 import { currentActor, errorResponse, unauthorized } from "@/lib/session";
 
 /** PATCH /api/posts/<id>/ — enregistre les champs envoyés (enregistrement automatique) */
@@ -10,6 +11,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!body || typeof body !== "object") return NextResponse.json({ success: false, error: "Requête invalide." }, { status: 400 });
     try {
         return NextResponse.json({ success: true, data: await savePost((await params).id, body, actor) });
+    } catch (error) {
+        return errorResponse(error);
+    }
+}
+
+/** DELETE /api/posts/<id>/ — suppression définitive d'un article de la corbeille (Admin) */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+    const actor = await currentActor();
+    if (!actor) return unauthorized();
+    try {
+        await deletePostForever((await params).id, actor);
+        return NextResponse.json({ success: true });
     } catch (error) {
         return errorResponse(error);
     }

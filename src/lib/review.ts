@@ -13,6 +13,8 @@ import ReviewThread from "@/models/ReviewThread";
 import Notification from "@/models/Notification";
 import Presence from "@/models/Presence";
 import Author from "@/models/Author";
+import Comment from "@/models/Comment";
+import Reaction from "@/models/Reaction";
 import { moduleIssues, applyGuestEdit } from "./modules/sanitize";
 import type { ArticleModule, GuestFavoriteData } from "./modules/types";
 import { ensureAuthor } from "./posts";
@@ -190,11 +192,27 @@ export async function publishDue(now = new Date()) {
 export async function purgeTrash(now = new Date()) {
     await connectDB();
     const old = await Post.find({ status: "trash", trashedAt: { $lte: new Date(now.getTime() - 30 * 86_400_000) } }).select("_id").lean();
-    const ids = old.map((p) => p._id);
-    if (!ids.length) return { deleted: 0 };
-    await Promise.all([Revision.deleteMany({ post: { $in: ids } }), ReviewThread.deleteMany({ post: { $in: ids } }), Presence.deleteMany({ post: { $in: ids } }), Notification.deleteMany({ post: { $in: ids } })]);
+    return { deleted: await deleteTrashed(old.map((p) => p._id)) };
+}
+
+/** Efface des articles de la corbeille et tout ce qui s'y rattache (les images restent dans la médiathèque) */
+async function deleteTrashed(ids: mongoose.Types.ObjectId[]): Promise<number> {
+    if (!ids.length) return 0;
+    const of = { post: { $in: ids } };
+    await Promise.all([Revision.deleteMany(of), ReviewThread.deleteMany(of), Presence.deleteMany(of), Notification.deleteMany(of), Comment.deleteMany(of), Reaction.deleteMany(of)]);
     const { deletedCount } = await Post.deleteMany({ _id: { $in: ids }, status: "trash" });
-    return { deleted: deletedCount };
+    return deletedCount;
+}
+
+/**
+ * Suppression définitive, sans attendre les 30 jours : Admin seulement, et
+ * seulement depuis la corbeille (on ne supprime pas d'un coup un article en ligne).
+ */
+export async function deletePostForever(id: string, actor: Actor) {
+    if (actor.role !== "admin") throw new PostError("La suppression définitive est réservée aux admins.", 403);
+    const post = await findPost(id);
+    if (post.status !== "trash") throw new PostError("Mets d'abord l'article à la corbeille.", 409);
+    await deleteTrashed([post._id]);
 }
 
 /* ─── Versions ─── */

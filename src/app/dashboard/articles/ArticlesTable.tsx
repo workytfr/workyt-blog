@@ -24,7 +24,7 @@ export interface ArticleRow {
 }
 
 /** Tableau des articles avec sélection et actions groupées (corbeille, restauration) */
-export default function ArticlesTable({ rows, view, empty }: { rows: ArticleRow[]; view: string; empty: string }) {
+export default function ArticlesTable({ rows, view, empty, canPurge = false }: { rows: ArticleRow[]; view: string; empty: string; canPurge?: boolean }) {
     const router = useRouter();
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
@@ -57,6 +57,29 @@ export default function ArticlesTable({ rows, view, empty }: { rows: ArticleRow[
         router.refresh();
     };
 
+    // Suppression définitive (Admin, depuis la corbeille) : irréversible, double confirmation
+    const purge = async () => {
+        const n = selected.size;
+        const titles = rows.filter((r) => selected.has(r.id)).map((r) => `« ${r.title || "Sans titre"} »`);
+        if (!window.confirm(`Supprimer définitivement ${n} article${n > 1 ? "s" : ""} ?\n\n${titles.slice(0, 5).join("\n")}${n > 5 ? "\n…" : ""}\n\nLe texte, les versions, les commentaires et les réactions seront effacés. C'est irréversible.`)) return;
+        if (window.prompt(`Pour confirmer, écris SUPPRIMER`)?.trim().toUpperCase() !== "SUPPRIMER") return;
+        setBusy(true);
+        setReport(null);
+        let ok = 0;
+        const refused: string[] = [];
+        for (const id of selected) {
+            const j = await fetch(`/api/posts/${id}/`, { method: "DELETE" })
+                .then((r) => r.json())
+                .catch(() => ({ success: false }));
+            if (j.success) ok++;
+            else refused.push(rows.find((r) => r.id === id)?.title ?? id);
+        }
+        setBusy(false);
+        setSelected(new Set());
+        setReport(`${ok} article${ok > 1 ? "s" : ""} supprimé${ok > 1 ? "s" : ""} définitivement.${refused.length ? ` Pas possible pour : ${refused.join(", ")}.` : ""}`);
+        router.refresh();
+    };
+
     return (
         <>
             {(selected.size > 0 || report) && (
@@ -67,9 +90,16 @@ export default function ArticlesTable({ rows, view, empty }: { rows: ArticleRow[
                                 {selected.size} sélectionné{selected.size > 1 ? "s" : ""}
                             </b>
                             {view === "corbeille" ? (
-                                <button type="button" disabled={busy} onClick={() => bulk("restore")} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/20">
-                                    <RotateCcw className="h-4 w-4" /> Restaurer
-                                </button>
+                                <>
+                                    <button type="button" disabled={busy} onClick={() => bulk("restore")} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/20">
+                                        <RotateCcw className="h-4 w-4" /> Restaurer
+                                    </button>
+                                    {canPurge && (
+                                        <button type="button" disabled={busy} onClick={() => void purge()} className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 font-semibold hover:bg-red-700">
+                                            <Trash2 className="h-4 w-4" /> Supprimer définitivement
+                                        </button>
+                                    )}
+                                </>
                             ) : (
                                 <button type="button" disabled={busy} onClick={() => bulk("trash")} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-red-500/80">
                                     <Trash2 className="h-4 w-4" /> Mettre à la corbeille
