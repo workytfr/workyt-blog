@@ -9,7 +9,7 @@ import Sources from "@/components/modules/Sources";
 import { ProductComparison } from "@/components/modules/Reviews";
 import { postJsonLd, jsonLdString } from "@/lib/seo";
 import { absoluteUrl, SITE } from "@/lib/site";
-import { formatDate, formatTime } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { Avatar, CategoryPill, CreditBadge } from "@/components/ui";
 import ShareBar from "@/components/ShareBar";
 import Sidebar from "@/components/Sidebar";
@@ -19,6 +19,7 @@ import Reactions from "@/components/Reactions";
 import { listComments, reactionCounts } from "@/lib/comments";
 import PostCard from "@/components/PostCard";
 import ViewCounter from "@/components/ViewCounter";
+import TableZoom from "@/components/TableZoom";
 
 /**
  * Mise en page d'un article (Pixwell au style Workyt) : héros avec l'image à
@@ -42,7 +43,6 @@ export default async function PostArticle({
     // Commentaires publiés et réactions : dans la page (référencement) ; l'aperçu de la rédaction n'en a pas
     const [comments, reactions] = preview ? [[], {}] : await Promise.all([listComments(post.id), reactionCounts(post.id)]);
     const img = post.featuredImage;
-    const updated = post.modifiedAt.slice(0, 10) !== post.publishedAt.slice(0, 10);
 
     // Modules (lot 4) : ceux placés dans le texte s'y affichent, les autres à la fin ; les sources en dernier
     const sources = post.modules.flatMap((m) => (m.type === "sources" ? m.data.items : []));
@@ -65,11 +65,12 @@ export default async function PostArticle({
             {!preview && <ViewCounter postId={post.id} />}
 
             {/* ─── Héros : image à la une derrière le titre (Pixwell) ─── */}
-            <section className="mx-auto mt-4 max-w-[1440px] px-4">
-                <div className="relative min-h-[520px] overflow-hidden rounded-[36px] bg-ink lg:h-[600px]">
-                    {img && <Image src={img.url} alt={img.alt} fill priority sizes="(min-width: 1440px) 1408px, 100vw" className="object-cover" />}
+            {/* Toute la largeur de l'écran (petite marge), le titre aligné sur le contenu */}
+            <section className="mt-3 px-2 sm:mt-4 sm:px-4 lg:px-5">
+                <div className="relative min-h-[460px] overflow-hidden rounded-[26px] bg-ink sm:min-h-[520px] sm:rounded-[36px] lg:h-[620px]">
+                    {img && <Image src={img.url} alt={img.alt} fill priority sizes="100vw" className="object-cover" />}
                     <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/25" />
-                    <div className="relative mx-auto flex h-full min-h-[520px] max-w-[1240px] flex-col px-6 pb-16 pt-8 text-white sm:px-8 lg:min-h-0">
+                    <div className="relative mx-auto flex h-full min-h-[460px] max-w-[1360px] flex-col px-5 pb-12 pt-6 text-white sm:min-h-[520px] sm:px-8 sm:pb-16 sm:pt-8 lg:min-h-0">
                         <nav className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-white/75" aria-label="Fil d'Ariane">
                             <Link href="/">{SITE.name}</Link>
                             {post.primaryCategory && (
@@ -81,13 +82,13 @@ export default async function PostArticle({
                             <ChevronRight className="h-3 w-3" />
                             <span className="line-clamp-1 max-w-[50ch] text-white/55">{post.title}</span>
                         </nav>
-                        <div className="mt-auto max-w-[880px]">
+                        <div className="mt-auto max-w-[980px]">
                             <div className="flex flex-wrap gap-2">
                                 {post.categories.map((c) => (
                                     <CategoryPill key={c.id} category={c} />
                                 ))}
                             </div>
-                            <h1 className="mt-5 font-display text-[38px] leading-[1.04] tracking-tight sm:text-[52px] lg:text-[60px]">{post.title}</h1>
+                            <h1 className="mt-5 break-words font-display text-[32px] leading-[1.06] tracking-tight sm:text-[48px] lg:text-[64px]">{post.title}</h1>
                             <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/80">
                                 {post.authors.length > 0 && (
                                     <span className="flex items-center gap-2.5">
@@ -128,16 +129,11 @@ export default async function PostArticle({
             </section>
 
             {/* ─── Contenu + widgets ─── */}
-            <div className="mx-auto grid max-w-[1240px] gap-12 px-6 pb-16 pt-12 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="mx-auto grid max-w-[1360px] gap-12 px-5 pb-16 pt-10 sm:px-8 sm:pt-12 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="min-w-0">
                     <div className="grid gap-8 lg:grid-cols-[42px_minmax(0,1fr)]">
                         <ShareBar url={url} title={post.title} image={img?.url} />
                         <article className="wk-counter min-w-0">
-                            {updated && (
-                                <p className="mb-6 text-sm text-ink/55">
-                                    Mis à jour le {formatDate(post.modifiedAt)} à {formatTime(post.modifiedAt)}
-                                </p>
-                            )}
                             {affiliate && (
                                 <p className="mb-6 rounded-2xl border border-sun/50 bg-sun/15 px-4 py-3 text-sm text-ink/75">
                                     <b>Transparence :</b> cet article contient des liens sponsorisés. Si tu achètes en passant par eux, Workyt peut toucher une petite commission, sans
@@ -151,6 +147,7 @@ export default async function PostArticle({
                                     <ModuleView key={i} module={byId.get(p.moduleId)!} post={post} preview={preview} />
                                 ) : null
                             )}
+                            <TableZoom />
                             {products.length > 1 && <ProductComparison items={products} />}
                             {atEnd.map((m) => (
                                 <ModuleView key={m.id} module={m} post={post} preview={preview} />
@@ -226,7 +223,7 @@ export default async function PostArticle({
             {/* ─── Tu aimeras aussi ─── */}
             {related.length > 0 && (
                 <section className="border-t border-ink/10 bg-paper2/60 py-14">
-                    <div className="mx-auto max-w-[1240px] px-6">
+                    <div className="mx-auto max-w-[1360px] px-5 sm:px-8">
                         <h2 className="section-title font-display text-[32px]">Tu aimeras aussi</h2>
                         <div className="mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                             {related.map((p) => (

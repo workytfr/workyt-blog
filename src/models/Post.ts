@@ -119,6 +119,9 @@ const PostSchema = new Schema(
         trashedAt: { type: Date },
 
         wpId: { type: Number, index: true },
+        /** Dernier import WordPress, et empreinte du titre + contenu importés : un article dont le texte a changé depuis n'est plus écrasé */
+        wpImportedAt: { type: Date },
+        wpImportHash: { type: String },
     },
     { timestamps: true }
 );

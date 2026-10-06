@@ -23,3 +23,4 @@ npm-debug.log*
 
 # Images envoyées en local (sans R2)
 /public/uploads-dev/
+/migration/

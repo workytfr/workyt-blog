@@ -99,7 +99,7 @@ function render(html: string, opts: RenderOptions): { html: string; toc: TocItem
     const clean = sanitizeHtml(html || "", SANITIZE);
     const { html: anchored, toc } = anchorHeadings(clean);
     // Logo du site à droite des liens : sur le blog seulement (pas dans le flux RSS, où les adresses relatives casseraient)
-    const withIcons = wrapQuotes(wrapHeadings(opts.linkIcons ? addLinkIcons(anchored, opts.affiliates) : anchored));
+    const withIcons = wrapTables(wrapQuotes(wrapHeadings(opts.linkIcons ? addLinkIcons(anchored, opts.affiliates) : anchored)));
     // Lettrine sur le premier paragraphe du texte (pas celui d'une citation, d'un encadré, d'une liste…)
     return { html: withLead(renderCitations(renderMath(withIcons), opts.sourceIds ?? [])), toc };
 }
@@ -186,6 +186,19 @@ function withLead(html: string): string {
 }
 
 /** Citation sans paragraphe (texte brut repris de WordPress) : un <p>, pour les guillemets du post-it */
+/**
+ * Tableaux : enveloppés pour ne jamais déborder sur les widgets. Ceux de 5
+ * colonnes ou plus (emplois du temps…) passent en version compacte pour tenir
+ * dans la colonne ; le défilement horizontal ne reste qu'en dernier recours.
+ */
+function wrapTables(html: string): string {
+    return html.replace(/<table\b[\s\S]*?<\/table>/g, (t) => {
+        const firstRow = t.match(/<tr\b[\s\S]*?<\/tr>/)?.[0] ?? "";
+        const cols = [...firstRow.matchAll(/<t[hd]\b([^>]*)>/g)].reduce((n, m) => n + (Number(m[1].match(/colspan="(\d+)"/)?.[1]) || 1), 0);
+        return `<div class="wk-table${cols >= 5 ? " wk-table--wide" : ""}">${t}</div>`;
+    });
+}
+
 function wrapQuotes(html: string): string {
     return html.replace(/<blockquote>(?!\s*<(?:p|div|ul|ol)\b)([\s\S]*?)<\/blockquote>/g, (_m, inner: string) => {
         const cite = inner.match(/<cite\b[\s\S]*<\/cite>/)?.[0] ?? "";

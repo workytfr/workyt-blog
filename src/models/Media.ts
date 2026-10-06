@@ -29,6 +29,8 @@ const MediaSchema = new Schema(
         rightsToCheck: { type: Boolean, default: false },
         uploadedBy: { type: Schema.Types.ObjectId, ref: "Member" },
         wpId: { type: Number, index: true },
+        /** Chemin de l'original WordPress (« 2024/03/photo.jpg », minuscules) : l'ancienne adresse redirige ici (SEO, Google Images) */
+        wpPath: { type: String, index: true, sparse: true },
     },
     { timestamps: true }
 );

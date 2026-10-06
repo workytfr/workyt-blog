@@ -396,10 +396,90 @@ html.dark :is(.bg-sun, .bg-leaf, .bg-sky, .wk-on-light) {
     font-size: 13px;
     color: rgb(var(--c-ink) / 0.5);
 }
+/* Tableau plus large que la colonne : il défile à l'intérieur, sans passer sous les widgets */
+.post-content .wk-table {
+    margin: 1.6em 0;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 14px;
+}
 .post-content table {
     width: 100%;
     border-collapse: collapse;
     font-size: 15px;
+}
+.post-content .wk-table table {
+    margin: 0;
+}
+/* Tableau qui défile encore : ombre à droite (il y a une suite) et bouton « Agrandir » */
+.post-content .wk-table--scroll {
+    background:
+        linear-gradient(to right, rgb(var(--c-paper)) 30%, transparent) left / 30px 100% no-repeat local,
+        linear-gradient(to left, rgb(var(--c-paper)) 30%, transparent) right / 30px 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgb(var(--c-ink) / 0.14), transparent) left / 12px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgb(var(--c-ink) / 0.14), transparent) right / 12px 100% no-repeat scroll;
+}
+.post-content .wk-table--scroll {
+    margin-bottom: 0.5em;
+}
+.wk-table-zoom {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 1.6em;
+    border-radius: 999px;
+    border: 1px solid rgb(var(--c-ink) / 0.15);
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.wk-table-zoom:hover {
+    background: rgb(var(--c-ink) / 0.05);
+}
+.wk-table-zoom[hidden] {
+    display: none;
+}
+/* Plein écran : le tableau garde sa taille normale et prend toute la largeur */
+.wk-table-full table {
+    width: auto;
+    min-width: 100%;
+    font-size: 15px;
+}
+/* Paragraphes dans les cases (tableaux repris de WordPress) : taille du tableau, pas du texte */
+.post-content th p,
+.post-content td p {
+    margin: 0;
+    font-size: inherit;
+    line-height: inherit;
+}
+/* 5 colonnes ou plus : compact, pour tenir dans la colonne sans défiler */
+.post-content .wk-table--wide table {
+    font-size: 13.5px;
+    line-height: 1.35;
+}
+.post-content .wk-table--wide th,
+.post-content .wk-table--wide td {
+    padding: 6px 7px;
+    hyphens: auto;
+    overflow-wrap: break-word;
+}
+@media (max-width: 640px) {
+    .post-content table {
+        font-size: 14px;
+    }
+    /* Petit écran : le tableau large défile de toute façon, on garde des mots entiers */
+    .post-content .wk-table--wide table {
+        min-width: 620px;
+    }
+    .post-content .wk-table--wide th,
+    .post-content .wk-table--wide td {
+        hyphens: manual;
+    }
+    .post-content th,
+    .post-content td {
+        padding: 6px 8px;
+    }
 }
 .post-content th,
 .post-content td {

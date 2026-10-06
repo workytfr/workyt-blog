@@ -47,7 +47,7 @@ async function upsertMember(p: { workytId: string; username: string; email?: str
         if (existing.author) await Author.updateOne({ _id: existing.author }, { $set: { avatarUrl: existing.avatarUrl, workytId: existing.workytId } });
         return existing;
     }
-    return Member.create({
+    const member = await Member.create({
         workytId: p.workytId,
         username: p.username,
         email: p.email,
@@ -56,6 +56,20 @@ async function upsertMember(p: { workytId: string; username: string; email?: str
         role: p.forceRole ?? initialRole(p.workytRole),
         lastLoginAt: new Date(),
     });
+    // Ancien auteur du WordPress (même e-mail) : son profil importé et son rôle le suivent
+    if (p.email) {
+        const author = await Author.findOneAndUpdate(
+            { email: p.email.toLowerCase(), member: null },
+            { $set: { member: member._id, workytId: member.workytId, ...(member.avatarUrl ? { avatarUrl: member.avatarUrl } : {}) } },
+            { new: true }
+        );
+        if (author) {
+            member.author = author._id;
+            if (member.role === "lecteur" && isRole(author.wpRole)) member.role = author.wpRole;
+            await member.save();
+        }
+    }
+    return member;
 }
 
 export const authOptions: NextAuthOptions = {

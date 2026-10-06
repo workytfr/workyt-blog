@@ -52,7 +52,7 @@ export default function TocRail({ items, readingMinutes }: { items: TocItem[]; r
 
     return (
         // Dans le flux de la colonne, sous les widgets : il ne recouvre jamais rien
-        <div className="sticky top-[92px] mt-6 hidden lg:block">
+        <div className="sticky top-[92px] mt-6 hidden xl:block">
             <nav
                 aria-label="Sommaire de l'article"
                 aria-hidden={!visible}

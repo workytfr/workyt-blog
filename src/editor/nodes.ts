@@ -23,8 +23,10 @@ export interface FigureAttrs {
 
 const attr = (name: string, fallback: unknown = null) => ({
     default: fallback,
-    // Les attributs sont lus depuis la structure <figure> par parseHTML ci-dessous
-    parseHTML: () => fallback,
+    // Les attributs sont lus depuis la structure <figure> par parseHTML ci-dessous. Renvoyer null
+    // (et non la valeur par défaut) : TipTap fusionne ce résultat PAR-DESSUS celui de getAttrs, une
+    // chaîne vide effaçait la légende et le crédit (import WordPress, copier-coller dans l'éditeur).
+    parseHTML: () => null,
     renderHTML: () => ({}),
     keepOnSplit: false,
     _name: name,

@@ -21,6 +21,10 @@ const AuthorSchema = new Schema(
             description: { type: String },
         },
         wpId: { type: Number, index: true },
+        /** E-mail du compte WordPress (import) : relie le profil au compte Workyt à sa première connexion */
+        email: { type: String, trim: true, lowercase: true, index: true, sparse: true },
+        /** Rôle WordPress (import) : donné au compte relié s'il est encore « lecteur » */
+        wpRole: { type: String },
     },
     { timestamps: true }
 );
