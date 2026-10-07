@@ -18,6 +18,7 @@ import Reaction from "@/models/Reaction";
 import { moduleIssues, applyGuestEdit } from "./modules/sanitize";
 import type { ArticleModule, GuestFavoriteData } from "./modules/types";
 import { ensureAuthor } from "./posts";
+import { notifyReviewDiscord } from "./discord";
 
 /**
  * Circuit de relecture (lot 3, cahier des charges § 7) : changements de
@@ -146,6 +147,8 @@ export async function applyAction(id: string, action: WorkflowAction, actor: Act
         const text = to === "scheduled" ? `${actor.name} a programmé l'article pour le ${at!.toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "long", timeStyle: "short" })}.` : n.text(actor.name, reason);
         await notify(post, action, text, n.audience, actor);
     }
+    // Annoncé aux correcteurs sur Discord, sans faire attendre la personne qui l'envoie
+    if (action === "submit") void notifyReviewDiscord(post, actor.name);
     return { status: post.status, slug: post.slug, publishedAt: post.publishedAt?.toISOString() ?? null, scheduledAt: post.scheduledAt?.toISOString() ?? null, ...(await editorState(actor, post)) };
 }
 
