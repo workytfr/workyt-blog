@@ -6,6 +6,10 @@ import { ReactRenderer } from "@tiptap/react";
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from "@tiptap/suggestion";
 import {
     AlertTriangle,
+    Clapperboard,
+    Instagram,
+    Music,
+    Video,
     BookOpen,
     CheckSquare,
     Code2,
@@ -27,6 +31,7 @@ import {
     Youtube,
     type LucideIcon,
 } from "lucide-react";
+import { EMBED_PROVIDERS, parseEmbed, type EmbedProvider } from "@/lib/embeds";
 import type { CalloutVariant } from "../nodes";
 
 /**
@@ -44,6 +49,20 @@ export interface BlockItem {
 
 const chain = (editor: Editor, range?: Range) => (range ? editor.chain().focus().deleteRange(range) : editor.chain().focus());
 const callout = (variant: CalloutVariant) => (editor: Editor, range?: Range) => chain(editor, range).setParagraph().setCallout(variant).run();
+/** Contenu d'une autre plateforme : on colle le lien, il est vérifié avant d'être inséré */
+const embed = (provider: EmbedProvider) => (editor: Editor, range?: Range) => {
+    const { label, hint } = EMBED_PROVIDERS[provider];
+    // La commande tapée (« /spotify ») disparaît dans tous les cas, lien accepté ou non
+    if (range) editor.chain().focus().deleteRange(range).run();
+    const url = window.prompt(`Lien ${label} (${hint.toLowerCase()}) :`);
+    if (!url) return;
+    const found = parseEmbed(url);
+    if (!found || found.provider !== provider) {
+        window.alert(`Ce lien n'est pas reconnu comme un contenu ${label}. Copie le lien depuis le bouton « Partager » de ${label}.`);
+        return;
+    }
+    editor.chain().focus().insertContent({ type: "socialEmbed", attrs: { provider, url: found.url } }).run();
+};
 
 /** Demande l'image à l'éditeur parent (il ouvre la médiathèque) */
 export const PICK_IMAGE_EVENT = "wk-editor:pick-image";
@@ -73,6 +92,10 @@ export const BLOCK_ITEMS: BlockItem[] = [
         const src = window.prompt("Lien de la vidéo YouTube :");
         if (src) chain(e, r).setYoutubeVideo({ src }).run();
     } },
+    { title: "Spotify", hint: EMBED_PROVIDERS.spotify.hint, icon: Music, group: "Médias", keywords: "spotify musique podcast playlist album son", run: embed("spotify") },
+    { title: "Dailymotion", hint: EMBED_PROVIDERS.dailymotion.hint, icon: Clapperboard, group: "Médias", keywords: "dailymotion video", run: embed("dailymotion") },
+    { title: "Instagram", hint: EMBED_PROVIDERS.instagram.hint, icon: Instagram, group: "Médias", keywords: "instagram post reel photo reseau", run: embed("instagram") },
+    { title: "TikTok", hint: EMBED_PROVIDERS.tiktok.hint, icon: Video, group: "Médias", keywords: "tiktok video reseau", run: embed("tiktok") },
     { title: "Formule", hint: "LaTeX dans la phrase : x², ½…", icon: Sigma, group: "Médias", keywords: "formule latex math", run: (e, r) => {
         const latex = window.prompt("Formule LaTeX (ex. \\frac{1}{2}) :");
         if (latex) chain(e, r).insertInlineMath({ latex }).run();

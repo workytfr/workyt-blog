@@ -19,11 +19,13 @@ const SANITIZE: sanitizeHtml.IOptions = {
         video: ["src", "controls", "poster", "preload"],
         source: ["src", "type"],
         figure: ["class", "data-media-id"],
-        div: ["class", "data-type", "data-latex", "data-youtube-video", "data-module"],
+        div: ["class", "data-type", "data-latex", "data-youtube-video", "data-module", "data-embed", "data-src"],
         sup: ["class", "data-source"],
         span: ["class", "data-type", "data-latex", "data-author", "data-source", "data-license", "data-url"],
         aside: ["class", "data-variant"],
         ul: ["data-type"],
+        // Numéro de départ : une liste coupée en plusieurs morceaux (1, puis 2, puis 3) continue sa numérotation
+        ol: ["start", "reversed"],
         li: ["data-type", "data-checked"],
         input: ["type", "checked"],
         pre: ["class"],
@@ -38,7 +40,7 @@ const SANITIZE: sanitizeHtml.IOptions = {
     },
     allowedClasses: {
         figure: ["wk-figure"],
-        div: ["wk-figure-media", "wk-video", "wk-module-slot"],
+        div: ["wk-figure-media", "wk-video", "wk-module-slot", "wk-embed"],
         sup: ["wk-cite"],
         span: ["credit", "credit-lic", "wk-h"],
         aside: ["wk-callout", "wk-callout--*"],

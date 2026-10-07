@@ -675,6 +675,79 @@ html.dark .post-content .wk-toc a:hover { color: #ff8a4c; }
     height: auto;
     border-radius: 20px;
 }
+/* Contenu d'une autre plateforme (Spotify, Instagram…) : carte, puis lecteur au clic */
+.post-content .wk-embed {
+    margin: 1.6em 0;
+}
+.post-content .wk-embed > a {
+    display: block;
+    border-radius: 18px;
+    border: 1px dashed rgb(var(--c-ink) / 0.2);
+    padding: 16px 20px;
+    font-weight: 600;
+}
+.wk-embed-card {
+    border-radius: 20px;
+    border: 1px solid rgb(var(--c-ink) / 0.1);
+    background: rgb(var(--c-paper2));
+    padding: 18px 22px;
+}
+.wk-embed-card strong {
+    font-family: var(--font-funnel-display), sans-serif;
+    font-size: 20px;
+}
+.wk-embed-card p {
+    margin: 6px 0 14px !important;
+    font-size: 14px;
+    color: rgb(var(--c-ink) / 0.6);
+}
+.wk-embed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+}
+.wk-embed-actions button {
+    border-radius: 999px;
+    background: rgb(var(--c-night));
+    color: #fff;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
+}
+.wk-embed-actions a {
+    font-size: 14px;
+    font-weight: 600;
+}
+.post-content .wk-embed.is-loaded iframe {
+    display: block;
+    width: 100%;
+    margin: 0 auto;
+    border: 0;
+    border-radius: 16px;
+}
+/* Dans l'éditeur : une carte avec la plateforme et le lien */
+.wk-editor .wk-embed {
+    margin: 1em 0;
+    border-radius: 16px;
+    border: 1px dashed rgb(26 21 18 / 0.25);
+    background: #fff;
+    padding: 14px 18px;
+    font-size: 14px;
+}
+.wk-editor .wk-embed::before {
+    content: "Contenu intégré · " attr(data-embed);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(26 21 18 / 0.45);
+}
+.wk-editor .wk-embed.ProseMirror-selectednode {
+    outline: 2px solid #ff6a1a;
+}
 .post-content pre {
     overflow-x: auto;
     border-radius: 18px;

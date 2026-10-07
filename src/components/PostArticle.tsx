@@ -20,6 +20,7 @@ import { listComments, reactionCounts } from "@/lib/comments";
 import PostCard from "@/components/PostCard";
 import ViewCounter from "@/components/ViewCounter";
 import TableZoom from "@/components/TableZoom";
+import EmbedLoader from "@/components/EmbedLoader";
 
 /**
  * Mise en page d'un article (Pixwell au style Workyt) : héros avec l'image à
@@ -148,6 +149,7 @@ export default async function PostArticle({
                                 ) : null
                             )}
                             <TableZoom />
+                            <EmbedLoader />
                             {products.length > 1 && <ProductComparison items={products} />}
                             {atEnd.map((m) => (
                                 <ModuleView key={m.id} module={m} post={post} preview={preview} />

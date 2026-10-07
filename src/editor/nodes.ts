@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
+import { EMBED_PROVIDERS, isEmbedProvider } from "@/lib/embeds";
 
 /**
  * Nœuds maison de l'éditeur, communs au navigateur et au serveur (le HTML
@@ -197,6 +198,46 @@ export const ModuleEmbed = Node.create({
 
     renderHTML({ HTMLAttributes }) {
         return ["div", mergeAttributes(HTMLAttributes, { class: "wk-module-slot" })];
+    },
+});
+
+/* ─── Contenu d'une autre plateforme (Spotify, Dailymotion, Instagram, TikTok) ─── */
+
+/**
+ * Bloc « contenu intégré ». Dans le document : la plateforme et le lien
+ * d'origine. Rendu public : une carte avec ce lien ; le lecteur officiel n'est
+ * chargé qu'au clic du lecteur (cookies de la plateforme), voir EmbedLoader.
+ */
+export const SocialEmbed = Node.create({
+    name: "socialEmbed",
+    group: "block",
+    atom: true,
+    draggable: true,
+    selectable: true,
+
+    addAttributes() {
+        return {
+            provider: {
+                default: "",
+                parseHTML: (el) => el.getAttribute("data-embed") || "",
+                renderHTML: (a) => ({ "data-embed": a.provider }),
+            },
+            url: {
+                default: "",
+                parseHTML: (el) => el.getAttribute("data-src") || el.querySelector("a")?.getAttribute("href") || "",
+                renderHTML: (a) => ({ "data-src": a.url }),
+            },
+        };
+    },
+
+    parseHTML() {
+        return [{ tag: "div[data-embed]" }];
+    },
+
+    renderHTML({ node, HTMLAttributes }) {
+        const provider = String(node.attrs.provider);
+        const label = isEmbedProvider(provider) ? EMBED_PROVIDERS[provider].label : "le contenu";
+        return ["div", mergeAttributes(HTMLAttributes, { class: "wk-embed" }), ["a", { href: node.attrs.url }, `Voir sur ${label}`]];
     },
 });
 

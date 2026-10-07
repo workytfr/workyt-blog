@@ -31,6 +31,7 @@ import { schemaExtensions } from "../src/editor/extensions";
 import { documentToHtml, documentText } from "../src/editor/html";
 import { readingMinutes } from "../src/lib/render";
 import { normalizePath } from "../src/lib/redirects";
+import { parseEmbed } from "../src/lib/embeds";
 import { sanitizeModules } from "../src/lib/modules/sanitize";
 import type { ArticleModule, ModuleImage } from "../src/lib/modules/types";
 import type { Role } from "../src/lib/roles";
@@ -467,12 +468,20 @@ async function convertContent(raw: string, ctx: ConvertCtx): Promise<{ json: JSO
 
     // Vidéos et intégrations
     root.querySelectorAll("figure.wp-block-embed, iframe").forEach((el: El) => {
-        if (!el.isConnected) return;
+        // root n'est pas dans une page : « isConnected » serait toujours faux (toutes les vidéos étaient sautées)
+        if (!root.contains(el)) return;
         const url = el.tagName === "IFRAME" ? el.getAttribute("src") || "" : (el.querySelector("iframe")?.getAttribute("src") || el.textContent || "").trim();
         const yt = YT.exec(url);
         const fig = el.tagName === "IFRAME" ? el.closest("figure") || el : el;
+        const social = yt ? null : parseEmbed(url);
         if (yt) fig.replaceWith(youtubeBlock(yt[1]));
-        else if (/^https?:\/\//.test(url)) {
+        else if (social) {
+            // Spotify, Dailymotion, Instagram, TikTok : bloc « contenu intégré » (lecteur chargé au clic)
+            const div = document.createElement("div");
+            div.setAttribute("data-embed", social.provider);
+            div.setAttribute("data-src", social.url);
+            fig.replaceWith(div);
+        } else if (/^https?:\/\//.test(url)) {
             fig.replaceWith(linkParagraph(url));
             warn(ctx.slug, `intégration remplacée par un lien : ${url}`);
         } else fig.remove();
@@ -487,7 +496,7 @@ async function convertContent(raw: string, ctx: ConvertCtx): Promise<{ json: JSO
 
     // Galeries : une image après l'autre
     root.querySelectorAll(".wp-block-gallery, .wp-block-jetpack-tiled-gallery, .tiled-gallery").forEach((g: El) => {
-        if (!g.isConnected) return;
+        if (!root.contains(g)) return;
         const frag = document.createDocumentFragment();
         g.querySelectorAll("img").forEach((img: El) => {
             const fig = document.createElement("figure");
@@ -605,7 +614,7 @@ async function convertContent(raw: string, ctx: ConvertCtx): Promise<{ json: JSO
     });
     // Reste de blocs inconnus
     root.querySelectorAll("div").forEach((d: El) => {
-        if (!d.hasAttribute("data-youtube-video") && !d.classList.contains("wk-figure-media")) unwrap(d);
+        if (!d.hasAttribute("data-youtube-video") && !d.hasAttribute("data-embed") && !d.classList.contains("wk-figure-media")) unwrap(d);
     });
 
     const json = generateJSON(root.innerHTML, schemaExtensions()) as JSONContent;
@@ -924,7 +933,8 @@ async function main() {
         const dateLocal = r[2];
         const m = meta.get(wpId) ?? new Map<string, string>();
         const title = decodeEntities(titleRaw).trim() || "Sans titre";
-        const slug = decodeSlug(nameRaw) || `article-${wpId}`;
+        // Jamais publié sur WordPress : pas encore d'adresse ; « brouillon-… » la laisse suivre le titre jusqu'à la publication
+        const slug = decodeSlug(nameRaw) || `brouillon-wp${wpId}`;
         postBySlug.set(slug, wpId);
 
         // Article retouché sur le nouveau blog depuis le dernier import (les vues ou réactions ne comptent pas) : on n'écrase pas
@@ -1014,7 +1024,8 @@ async function main() {
                     featuredImage,
                     seo,
                     isPillar: m.get("rank_math_pillar_content") === "on",
-                    publishedAt: status === "scheduled" ? undefined : publishedAt,
+                    // Date de publication seulement pour un article réellement publié (sinon il sortirait antidaté)
+                    publishedAt: status === "published" || status === "unpublished" ? publishedAt : undefined,
                     scheduledAt: status === "scheduled" ? publishedAt : undefined,
                     modifiedAt,
                     readingMinutes: readingMinutes(html),
