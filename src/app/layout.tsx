@@ -50,7 +50,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     {children}
                 </Providers>
                 {/* Mesure d'audience Umami (sans cookie) : stats.youss.dev */}
-                {umamiUrl && umamiId && <Script src={`${umamiUrl}/script.js`} data-website-id={umamiId} strategy="afterInteractive" />}
+                {umamiUrl && umamiId && (
+                    <>
+                        <Script src={`${umamiUrl}/script.js`} data-website-id={umamiId} data-performance="true" strategy="afterInteractive" />
+                        {/* Enregistrement des sessions, comme sur l'ancien WordPress */}
+                        <Script src={`${umamiUrl}/recorder.js`} data-website-id={umamiId} strategy="afterInteractive" />
+                    </>
+                )}
             </body>
         </html>
     );
