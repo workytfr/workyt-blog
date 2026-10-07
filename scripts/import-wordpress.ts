@@ -648,6 +648,17 @@ const COLORS: Record<string, string> = {
  * gardent leurs autres rubriques ; l'ancienne adresse redirige vers l'accueil.
  */
 const SKIPPED_CATEGORIES = new Set(["workyt", "codworkyt"]);
+/** Adresse de page auteur fabriquée par WordPress à partir d'un e-mail (« jeanne-dupontgmail-com ») */
+const EMAIL_SLUG = /@|(gmail|hotmail|outlook|yahoo|live|icloud|orange|free|laposte|wanadoo|sfr|protonmail|proton|msn|aol|gmx)-?(com|fr|net|be|ch|ca|me)$|-(com|fr|net|org|be|ch|ca)$/i;
+const authorSlugRedirects: { from: string; to: string }[] = [];
+const slugify = (s: string) =>
+    s
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60);
 /** Pages WordPress non reprises : équivalent sur workyt.fr (ou l'accueil du blog) */
 const PAGES: Record<string, string> = {
     "privacy-policy": "https://workyt.fr/politique-confidentialite",
@@ -849,8 +860,26 @@ async function main() {
     }
     const authorByTerm = new Map<string, Types.ObjectId>();
     const authorByUser = new Map<string, Types.ObjectId>();
-    for (const t of [...tt.values()].filter((x) => x.taxonomy === "author")) {
+    const authorTerms = [...tt.values()].filter((x) => x.taxonomy === "author");
+    // Certains comptes WordPress avaient l'e-mail pour identifiant : leur page était /author/prenom-nomgmail-com/.
+    // Nouvelle adresse tirée du nom affiché (l'e-mail ne doit jamais apparaître), l'ancienne redirige
+    const usedSlugs = new Set(authorTerms.map((t) => terms.get(t.termId)!.slug).filter((sl) => !EMAIL_SLUG.test(sl)));
+    const authorSlug = new Map<string, string>();
+    for (const t of authorTerms) {
         const term = terms.get(t.termId)!;
+        if (!EMAIL_SLUG.test(term.slug)) {
+            authorSlug.set(t.termId, term.slug);
+            continue;
+        }
+        const base = slugify(term.name) || `auteur-${t.termId}`;
+        let candidate = base;
+        for (let i = 2; usedSlugs.has(candidate); i++) candidate = `${base}-${i}`;
+        usedSlugs.add(candidate);
+        authorSlug.set(t.termId, candidate);
+        authorSlugRedirects.push({ from: `/author/${term.slug}/`, to: `/author/${candidate}/` });
+    }
+    for (const t of authorTerms) {
+        const term = { ...terms.get(t.termId)!, slug: authorSlug.get(t.termId)! };
         const m = termMeta.get(t.termId) ?? new Map<string, string>();
         const userId = m.get("user_id") || "";
         let avatarUrl: string | undefined;
@@ -1073,6 +1102,7 @@ async function main() {
         if (parent) redirects.push({ from: `/?attachment_id=${id}`, to: `/${decodeSlug(parent[11])}/`, status: 301, source: "migration" });
     }
     for (const slug of SKIPPED_CATEGORIES) redirects.push({ from: `/category/${slug}/`, to: "/", status: 301, source: "migration" });
+    for (const r of authorSlugRedirects) redirects.push({ ...r, status: 301, source: "migration" });
     for (const pg of pages) {
         const to = PAGES[pg[11]] ?? "/";
         report.pages.push(`/${pg[11]}/ → ${to}`);

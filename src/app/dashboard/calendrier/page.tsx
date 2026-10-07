@@ -69,7 +69,8 @@ export default async function CalendarPage({ searchParams }: Props) {
             <div className="mx-auto max-w-6xl">
                 <p className="eyebrow">Rédaction</p>
                 <h1 className="mt-1 font-display text-5xl">Calendrier</h1>
-                <CalendarView items={items} mode={mode} anchor={anchor} start={start.toISOString()} canMove={can(session.user.role, "post.publish")} />
+                {/* key : un autre mois ou une autre semaine = un calendrier neuf (sinon il garde les articles du premier mois affiché) */}
+                <CalendarView key={`${mode}-${anchor}`} items={items} mode={mode} anchor={anchor} start={start.toISOString()} canMove={can(session.user.role, "post.publish")} />
             </div>
         </main>
     );
