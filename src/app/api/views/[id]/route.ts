@@ -12,7 +12,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) return NextResponse.json({ ok: false }, { status: 400 });
     await connectDB();
-    const res = await Post.updateOne({ _id: id, status: "published" }, { $inc: { views: 1 } });
+    // Compteur : ne change pas la date de modification de l'article
+    const res = await Post.updateOne({ _id: id, status: "published" }, { $inc: { views: 1 } }, { timestamps: false });
     if (res.modifiedCount) await ViewDay.updateOne({ day: parisDay(), post: id }, { $inc: { views: 1 } }, { upsert: true });
     return NextResponse.json({ ok: true });
 }

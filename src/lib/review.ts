@@ -326,9 +326,10 @@ export async function heartbeat(id: string, actor: Actor, input: PresenceInput) 
     const mode = await editModeFor(actor, post);
     const wantsEdit = input.want === "edit" && mode !== "read";
 
+    // Verrou et présence : ne changent pas la date de modification de l'article (colonne « Modifié »)
     if (input.leave) {
         await Presence.deleteOne({ post: post._id, member: me });
-        if (post.lock?.member && String(post.lock.member) === me) await Post.updateOne({ _id: post._id, "lock.member": me }, { $unset: { lock: 1 } });
+        if (post.lock?.member && String(post.lock.member) === me) await Post.updateOne({ _id: post._id, "lock.member": me }, { $unset: { lock: 1 } }, { timestamps: false });
         return null;
     }
 
@@ -337,18 +338,19 @@ export async function heartbeat(id: string, actor: Actor, input: PresenceInput) 
     const expired = !lock?.at || now.getTime() - new Date(lock.at).getTime() >= LOCK_TTL_MS;
 
     if (holder === me) {
-        if (input.yield) await Post.updateOne({ _id: post._id, "lock.member": me }, { $unset: { lock: 1 } });
+        if (input.yield) await Post.updateOne({ _id: post._id, "lock.member": me }, { $unset: { lock: 1 } }, { timestamps: false });
         else if (input.active || !wantsEdit) {
-            await Post.updateOne({ _id: post._id, "lock.member": me }, wantsEdit ? { $set: { "lock.at": now } } : { $unset: { lock: 1 } });
+            await Post.updateOne({ _id: post._id, "lock.member": me }, wantsEdit ? { $set: { "lock.at": now } } : { $unset: { lock: 1 } }, { timestamps: false });
         }
     } else if (wantsEdit && (!holder || expired)) {
         // Prise de la main, conditionnelle pour ne pas l'arracher à quelqu'un qui vient de la prendre
         await Post.updateOne(
             { _id: post._id, $or: [{ "lock.member": { $exists: false } }, { "lock.member": null }, { "lock.at": { $lt: new Date(now.getTime() - LOCK_TTL_MS) } }, { "lock.member": lock?.member ?? null, "lock.at": lock?.at ?? null }] },
-            { $set: { lock: { member: new mongoose.Types.ObjectId(me), name: actor.name, at: now } } }
+            { $set: { lock: { member: new mongoose.Types.ObjectId(me), name: actor.name, at: now } } },
+            { timestamps: false }
         );
     } else if (wantsEdit && input.request && holder) {
-        await Post.updateOne({ _id: post._id, "lock.member": lock!.member }, { $set: { "lock.requestedBy": { member: new mongoose.Types.ObjectId(me), name: actor.name, at: now } } });
+        await Post.updateOne({ _id: post._id, "lock.member": lock!.member }, { $set: { "lock.requestedBy": { member: new mongoose.Types.ObjectId(me), name: actor.name, at: now } } }, { timestamps: false });
     }
 
     await Presence.updateOne({ post: post._id, member: me }, { $set: { name: actor.name, mode: wantsEdit ? "edit" : "view", at: now } }, { upsert: true });

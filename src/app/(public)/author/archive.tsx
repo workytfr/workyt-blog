@@ -19,6 +19,7 @@ export async function authorMetadata(slug: string, page: number): Promise<Metada
         description: a.seo.description || a.bio || `Les articles de ${a.name} sur le blog Workyt.`,
         path: `/author/${a.slug}/`,
         page,
+        card: { title: a.name, kicker: a.title || "Auteur du blog" },
     });
 }
 

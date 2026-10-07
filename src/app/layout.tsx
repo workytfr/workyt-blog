@@ -6,6 +6,7 @@ import { SITE, pageTitle } from "@/lib/site";
 import Providers from "@/components/Providers";
 import { getSettings } from "@/lib/settings";
 import { THEME_SCRIPT } from "@/lib/theme";
+import { ogCard } from "@/lib/seo";
 
 // Polices de Workyt, et seulement elles
 const funnelDisplay = Funnel_Display({ subsets: ["latin"], variable: "--font-funnel-display", display: "swap" });
@@ -23,15 +24,15 @@ export async function generateMetadata(): Promise<Metadata> {
             ...(s.verification.google ? { google: s.verification.google } : {}),
             ...(s.verification.bing ? { other: { "msvalidate.01": s.verification.bing } } : {}),
         },
-        openGraph: { siteName: SITE.name, locale: SITE.locale, type: "website" },
+        // Carte de partage par défaut (pages sans carte à elles)
+        openGraph: { siteName: SITE.name, locale: SITE.locale, type: "website", images: [ogCard()] },
+        twitter: { card: "summary_large_image", images: [ogCard().url] },
     };
 }
 
 export const viewport: Viewport = {
-    themeColor: [
-        { media: "(prefers-color-scheme: light)", color: "#fdfaf4" },
-        { media: "(prefers-color-scheme: dark)", color: "#16120f" },
-    ],
+    // Thème clair par défaut (le sombre est un choix du lecteur) : barre du navigateur claire
+    themeColor: "#fdfaf4",
 };
 
 const umamiUrl = process.env.NEXT_PUBLIC_UMAMI_URL?.replace(/\/$/, "");

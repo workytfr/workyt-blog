@@ -16,17 +16,8 @@ const isDark = () => document.documentElement.classList.contains("dark");
 export default function ThemeToggle({ className = "" }: { className?: string }) {
     const dark = useSyncExternalStore(subscribe, isDark, () => false);
 
-    useEffect(() => {
-        // En revenant du dashboard (toujours clair), on remet le thème du lecteur
-        applyTheme(preferredTheme());
-        // Sans choix enregistré : on suit le système s'il change
-        const mq = window.matchMedia("(prefers-color-scheme: dark)");
-        const onChange = () => {
-            if (!localStorage.getItem(THEME_KEY)) applyTheme(mq.matches ? "dark" : "light");
-        };
-        mq.addEventListener("change", onChange);
-        return () => mq.removeEventListener("change", onChange);
-    }, []);
+    // En revenant du dashboard (toujours clair), on remet le thème du lecteur
+    useEffect(() => applyTheme(preferredTheme()), []);
 
     const toggle = () => {
         const next = dark ? "light" : "dark";

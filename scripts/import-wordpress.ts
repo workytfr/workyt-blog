@@ -344,7 +344,7 @@ function storeWpImage(file: { abs: string; rel: string }, meta: { alt?: string; 
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(0, 70);
-    const key = `blog/wp/${dir.replace(/[^0-9/]/g, "") || "divers"}/${safe || "image"}.webp`;
+    const key = `wp/${dir.replace(/[^0-9/]/g, "") || "divers"}/${safe || "image"}.webp`;
     let job = mediaCache.get(key);
     if (job) return job;
     // Ancienne adresse WordPress de l'original : redirigée vers l'image reprise (route /wp-content/uploads/…)
@@ -877,7 +877,8 @@ async function main() {
             { upsert: true, new: true }
         );
         // Photo importée localement auparavant (essai sans R2) : remplacée par celle de R2
-        if (avatarUrl && doc.avatarUrl?.startsWith("/uploads-dev/") && !avatarUrl.startsWith("/uploads-dev/")) await Author.updateOne({ _id: doc._id }, { $set: { avatarUrl } });
+        // Photo reprise lors d'un import précédent (autre stockage) : remplacée par la nouvelle adresse
+        if (avatarUrl && doc.avatarUrl && doc.avatarUrl !== avatarUrl && /\/(blog\/)?wp\//.test(doc.avatarUrl)) await Author.updateOne({ _id: doc._id }, { $set: { avatarUrl } });
         authorByTerm.set(t.termId, doc._id);
         if (userId) authorByUser.set(userId, doc._id);
     }
@@ -963,6 +964,10 @@ async function main() {
         const missed = wpStatus === "future" && !!publishedAt && publishedAt.getTime() <= Date.now();
         if (missed) report.missedSchedule.push(`${slug} (prévu le ${publishedAt!.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })})`);
         const status: PostStatus = missed ? "published" : STATUS[wpStatus];
+        // Date de modification : celle de WordPress, jamais avant la publication (article écrit puis
+        // programmé : Google refuse une mise à jour antérieure à la publication)
+        const wpModified = gmt(modifiedGmtRaw) ?? publishedAt;
+        const modifiedAt = publishedAt && wpModified && wpModified < publishedAt ? publishedAt : wpModified;
         const doc = await Post.findOneAndUpdate(
             { wpId: Number(wpId) },
             {
@@ -982,7 +987,7 @@ async function main() {
                     isPillar: m.get("rank_math_pillar_content") === "on",
                     publishedAt: status === "scheduled" ? undefined : publishedAt,
                     scheduledAt: status === "scheduled" ? publishedAt : undefined,
-                    modifiedAt: gmt(modifiedGmtRaw) ?? publishedAt,
+                    modifiedAt,
                     readingMinutes: readingMinutes(html),
                     views: views.get(wpId) || 0,
                     reactions,
@@ -995,7 +1000,9 @@ async function main() {
         // Empreinte calculée sur l'article tel qu'enregistré (relu en base, comme au prochain import)
         const saved = await Post.findById(doc._id).select("title contentJson excerpt categories primaryCategory tags authors seo featuredImage").lean();
         await Post.collection.updateOne({ _id: doc._id }, { $set: { wpImportHash: importHash(saved as unknown as Editorial) } });
-        await Post.collection.updateOne({ _id: doc._id, createdAt: { $exists: false } }, { $set: { createdAt: publishedAt ?? importedAt, updatedAt: importedAt } });
+        // Dates techniques = celles de WordPress (et non le jour de l'import) : la colonne « Modifié » du dashboard reste juste
+        await Post.collection.updateOne({ _id: doc._id }, { $set: { updatedAt: modifiedAt ?? importedAt } });
+        await Post.collection.updateOne({ _id: doc._id, createdAt: { $exists: false } }, { $set: { createdAt: publishedAt ?? importedAt } });
         postIdByWp.set(wpId, doc._id);
         if (++done % 25 === 0) console.log(`  ${done}/${posts.length}`);
     }
@@ -1081,7 +1088,7 @@ async function main() {
     }
 
     // Rapport
-    const media = await Media.countDocuments({ key: /^blog\/wp\// });
+    const media = await Media.countDocuments({ wpPath: { $exists: true } });
     const lines = [
         `# Rapport d'import WordPress — ${importedAt.toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}`,
         "",

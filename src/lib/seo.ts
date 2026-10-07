@@ -13,7 +13,8 @@ export function postMetadata(post: PostView): Metadata {
     const title = pageTitle(post.seo.title || post.title);
     const description = post.seo.description || post.excerpt;
     const url = post.seo.canonical || absoluteUrl(`/${post.slug}/`);
-    const image = post.featuredImage;
+    // Carte de partage en JPEG 1200 × 630 (photo + titre), lue par tous les réseaux (pas le WebP brut)
+    const card = { url: absoluteUrl(`/og/${encodeURIComponent(post.slug)}/`), width: 1200, height: 630, alt: post.featuredImage?.alt || post.title, type: "image/jpeg" };
     return {
         title: { absolute: title },
         description,
@@ -31,13 +32,19 @@ export function postMetadata(post: PostView): Metadata {
             authors: post.authors.map((a) => absoluteUrl(`/author/${a.slug}/`)),
             section: post.primaryCategory?.name,
             tags: post.tags.map((t) => t.name),
-            images: image ? [{ url: image.url, width: image.width, height: image.height, alt: image.alt }] : undefined,
+            images: [card],
         },
-        twitter: { card: "summary_large_image", title, description, images: image ? [image.url] : undefined },
+        twitter: { card: "summary_large_image", title, description, images: [card.url] },
     };
 }
 
-export function archiveMetadata(opts: { title: string; description?: string; path: string; page?: number; noindex?: boolean }): Metadata {
+/** Carte de partage d'une page sans photo (accueil, rubrique, auteur, étiquette) */
+export function ogCard(card?: { title: string; kicker?: string }) {
+    const q = card ? `?titre=${encodeURIComponent(card.title)}${card.kicker ? `&type=${encodeURIComponent(card.kicker)}` : ""}` : "";
+    return { url: absoluteUrl(`/og/${q}`), width: 1200, height: 630, alt: card?.title || "Le blog de Workyt", type: "image/jpeg" };
+}
+
+export function archiveMetadata(opts: { title: string; description?: string; path: string; page?: number; noindex?: boolean; card?: { title: string; kicker?: string } }): Metadata {
     const paged = opts.page && opts.page > 1 ? ` ${SITE.titleSeparator} Page ${opts.page}` : "";
     const path = opts.page && opts.page > 1 ? `${opts.path}page/${opts.page}/` : opts.path;
     return {
@@ -45,7 +52,8 @@ export function archiveMetadata(opts: { title: string; description?: string; pat
         description: opts.description,
         alternates: { canonical: absoluteUrl(path) },
         robots: opts.noindex ? { index: false, follow: true } : undefined,
-        openGraph: { type: "website", url: absoluteUrl(path), title: pageTitle(opts.title), description: opts.description, siteName: SITE.name, locale: SITE.locale },
+        openGraph: { type: "website", url: absoluteUrl(path), title: pageTitle(opts.title), description: opts.description, siteName: SITE.name, locale: SITE.locale, images: [ogCard(opts.card)] },
+        twitter: { card: "summary_large_image", title: pageTitle(opts.title), description: opts.description, images: [ogCard(opts.card).url] },
     };
 }
 

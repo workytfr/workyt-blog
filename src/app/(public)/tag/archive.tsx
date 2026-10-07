@@ -13,6 +13,7 @@ export async function tagMetadata(slug: string, page: number): Promise<Metadata>
         description: tag.description || `Les articles du blog Workyt sur le thème « ${tag.name} ».`,
         path: `/tag/${tag.slug}/`,
         page,
+        card: { title: `#${tag.name}`, kicker: "Étiquette" },
     });
 }
 

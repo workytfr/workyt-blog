@@ -13,6 +13,7 @@ export async function categoryMetadata(slug: string, page: number): Promise<Meta
         description: cat.seo.description || cat.description || `Tous les articles de la rubrique ${cat.name} du blog Workyt.`,
         path: `/category/${cat.slug}/`,
         page,
+        card: { title: cat.name, kicker: "Rubrique" },
         noindex: cat.seo.noindex,
     });
 }

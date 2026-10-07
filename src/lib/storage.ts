@@ -69,7 +69,8 @@ export async function storeImage(file: File): Promise<StoredImage> {
     }
 
     const now = new Date();
-    const key = `blog/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${safeName(file.name)}`;
+    // Bucket dédié au blog : pas de préfixe « blog/ »
+    const key = `${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${safeName(file.name)}`;
 
     if (r2Configured()) {
         await r2().send(

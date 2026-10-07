@@ -52,7 +52,7 @@ async function publishedPost(postId: string) {
 /** Recompte des commentaires publiés, et page de l'article à régénérer */
 async function refresh(postId: mongoose.Types.ObjectId | string, slug?: string) {
     const n = await Comment.countDocuments({ post: postId, status: "published" });
-    const post = await Post.findByIdAndUpdate(postId, { $set: { commentCount: n } }, { new: true }).select("slug").lean();
+    const post = await Post.findByIdAndUpdate(postId, { $set: { commentCount: n } }, { new: true, timestamps: false }).select("slug").lean();
     const s = slug ?? post?.slug;
     if (s) {
         try {
@@ -337,6 +337,6 @@ export async function setReaction(postId: string, voter: string, type: unknown):
     const totals = await Reaction.aggregate<{ _id: string; n: number }>([{ $match: { post: post._id } }, { $group: { _id: "$type", n: { $sum: 1 } } }]);
     const counts = Object.fromEntries(totals.filter((t) => isReaction(t._id)).map((t) => [t._id, t.n])) as ReactionCounts;
     // strict: false : le total s'écrit même si le modèle chargé date d'avant le champ « reactions » (rechargement à chaud)
-    await Post.updateOne({ _id: post._id }, { $set: { reactions: counts } }, { strict: false });
+    await Post.updateOne({ _id: post._id }, { $set: { reactions: counts } }, { strict: false, timestamps: false });
     return { counts, mine: type === null ? null : (type as ReactionKey) };
 }
