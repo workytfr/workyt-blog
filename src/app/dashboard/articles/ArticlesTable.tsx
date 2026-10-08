@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Loader2, MessageSquare, RotateCcw, Trash2 } from "lucide-react";
+import { CalendarClock, GalleryHorizontal, Loader2, MessageSquare, RotateCcw, Trash2 } from "lucide-react";
 import { STATUS_LABELS } from "@/editor/types";
 import { scoreTone } from "@/lib/seo/analyze";
 import { relativeDate } from "@/lib/format";
@@ -24,7 +24,8 @@ export interface ArticleRow {
 }
 
 /** Tableau des articles avec sélection et actions groupées (corbeille, restauration) */
-export default function ArticlesTable({ rows, view, empty, canPurge = false }: { rows: ArticleRow[]; view: string; empty: string; canPurge?: boolean }) {
+/** canCarousel : lien vers le carrousel Instagram / LinkedIn (Rédacteur en chef et Admin) */
+export default function ArticlesTable({ rows, view, empty, canPurge = false, canCarousel = false }: { rows: ArticleRow[]; view: string; empty: string; canPurge?: boolean; canCarousel?: boolean }) {
     const router = useRouter();
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
@@ -157,6 +158,11 @@ export default function ArticlesTable({ rows, view, empty, canPurge = false }: {
                                                                 {c.name}
                                                             </span>
                                                         ))}
+                                                        {canCarousel && p.status !== "trash" && (
+                                                            <Link href={`/dashboard/articles/${p.id}/carrousel/`} className="inline-flex items-center gap-1 font-semibold text-ink/55 hover:text-accentdark">
+                                                                <GalleryHorizontal className="h-3 w-3" /> Carrousel
+                                                            </Link>
+                                                        )}
                                                         {p.here.length > 0 && (
                                                             <span className="inline-flex items-center gap-1 font-semibold text-accentdark">
                                                                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />

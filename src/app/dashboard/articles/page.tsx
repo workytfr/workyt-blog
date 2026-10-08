@@ -146,7 +146,7 @@ export default async function ArticlesPage({ searchParams }: Props) {
                     )}
                 </form>
 
-                <ArticlesTable rows={rows} view={view} canPurge={role === "admin"} empty={view === "afaire" && !filtered ? "Rien qui t'attend pour l'instant. 🎉" : view === "corbeille" ? "La corbeille est vide." : "Aucun article ne correspond."} />
+                <ArticlesTable rows={rows} view={view} canPurge={role === "admin"} canCarousel={can(role, "social.export")} empty={view === "afaire" && !filtered ? "Rien qui t'attend pour l'instant. 🎉" : view === "corbeille" ? "La corbeille est vide." : "Aucun article ne correspond."} />
             </div>
         </main>
     );

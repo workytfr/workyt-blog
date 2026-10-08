@@ -35,7 +35,8 @@ export type Action =
     | "calendar.view"
     | "team.manage"
     | "stats.view"
-    | "redirects.manage";
+    | "redirects.manage"
+    | "social.export";
 
 const MATRIX: Record<Action, Role[]> = {
     comment: ["lecteur", "redacteur", "correcteur", "redac_chef", "admin"],
@@ -55,6 +56,8 @@ const MATRIX: Record<Action, Role[]> = {
     "team.manage": ["redac_chef", "admin"],
     "stats.view": ["redac_chef", "admin"],
     "redirects.manage": ["admin"],
+    /** Carrousels Instagram / LinkedIn des articles */
+    "social.export": ["redac_chef", "admin"],
 };
 
 export function can(role: Role | null | undefined, action: Action): boolean {
