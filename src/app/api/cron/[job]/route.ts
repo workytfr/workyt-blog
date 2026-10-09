@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  *
  * Tâches idempotentes : un appel en trop ne fait rien de plus.
  *   publish      toutes les 5 min : publie les articles planifiés dont l'heure est passée
- *   purge-trash  chaque nuit : vide la corbeille (articles jetés il y a plus de 30 jours)
+ *   purge-trash  chaque nuit : vide la corbeille (articles jetés il y a plus de 30 jours) et efface les versions de séance de plus de 30 jours
  *   check-links  chaque nuit : vérifie les liens affiliés, prévient la rédaction en chef des liens morts
  */
 

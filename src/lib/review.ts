@@ -19,6 +19,8 @@ import { moduleIssues, applyGuestEdit } from "./modules/sanitize";
 import type { ArticleModule, GuestFavoriteData } from "./modules/types";
 import { ensureAuthor } from "./posts";
 import { notifyReviewDiscord } from "./discord";
+import { revisionKind } from "./revisionRules";
+import { purgeRevisions, revisionContent, saveRevision } from "./revisions";
 
 /**
  * Circuit de relecture (lot 3, cahier des charges § 7) : changements de
@@ -36,12 +38,6 @@ async function findPost(id: string) {
 }
 type PostDocument = Awaited<ReturnType<typeof findPost>>;
 
-const wordCount = (doc: unknown) => documentText(doc as JSONContent).split(" ").filter(Boolean).length;
-
-async function snapshot(post: PostDocument, label: string, actor: { memberId?: string; name: string }) {
-    if (!post.contentJson) return;
-    await Revision.create({ post: post._id, title: post.title, excerpt: post.excerpt, contentJson: post.contentJson, status: post.status, label, member: actor.memberId, name: actor.name, words: wordCount(post.contentJson) });
-}
 
 /* ─── Notifications ─── */
 
@@ -141,7 +137,7 @@ export async function applyAction(id: string, action: WorkflowAction, actor: Act
     post.workflow.push({ action, from, to, member: new mongoose.Types.ObjectId(actor.memberId), name: actor.name, reason, at: new Date() });
     await post.save();
 
-    if (REVISION_LABEL[action]) await snapshot(post, REVISION_LABEL[action]!, actor);
+    if (REVISION_LABEL[action]) await saveRevision(post, "step", REVISION_LABEL[action]!, actor);
     const n = NOTIFY[action];
     if (n) {
         const text = to === "scheduled" ? `${actor.name} a programmé l'article pour le ${at!.toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "long", timeStyle: "short" })}.` : n.text(actor.name, reason);
@@ -191,11 +187,11 @@ export async function publishDue(now = new Date()) {
     return { published: slugs.length, slugs };
 }
 
-/** Vide la corbeille : articles jetés il y a plus de 30 jours */
+/** Vide la corbeille (articles jetés il y a plus de 30 jours) et efface les versions de séance de plus de 30 jours */
 export async function purgeTrash(now = new Date()) {
     await connectDB();
     const old = await Post.find({ status: "trash", trashedAt: { $lte: new Date(now.getTime() - 30 * 86_400_000) } }).select("_id").lean();
-    return { deleted: await deleteTrashed(old.map((p) => p._id)) };
+    return { deleted: await deleteTrashed(old.map((p) => p._id)), revisions: (await purgeRevisions(now)).deleted };
 }
 
 /** Efface des articles de la corbeille et tout ce qui s'y rattache (les images restent dans la médiathèque) */
@@ -227,8 +223,8 @@ async function assertReview(actor: Actor, post: PostDocument) {
 export async function listRevisions(id: string, actor: Actor) {
     const post = await findPost(id);
     await assertReview(actor, post);
-    const revs = await Revision.find({ post: post._id }).sort({ createdAt: -1 }).limit(100).select("label name createdAt words status title").lean();
-    return revs.map((r) => ({ id: String(r._id), label: r.label, name: r.name, at: r.createdAt.toISOString(), words: r.words, status: r.status ?? null, title: r.title }));
+    const revs = await Revision.find({ post: post._id }).sort({ createdAt: -1 }).limit(100).select("kind label name member createdAt words status title").lean();
+    return revs.map((r) => ({ id: String(r._id), kind: revisionKind(r), label: r.label, name: r.name, member: r.member ? String(r.member) : null, at: r.createdAt.toISOString(), words: r.words, status: r.status ?? null, title: r.title }));
 }
 
 export async function getRevision(id: string, revisionId: string, actor: Actor) {
@@ -237,7 +233,7 @@ export async function getRevision(id: string, revisionId: string, actor: Actor) 
     if (!isId(revisionId)) throw new PostError("Version introuvable.", 404);
     const r = await Revision.findOne({ _id: revisionId, post: post._id }).lean();
     if (!r) throw new PostError("Version introuvable.", 404);
-    return { id: String(r._id), label: r.label, name: r.name, at: r.createdAt.toISOString(), title: r.title, contentJson: r.contentJson as JSONContent };
+    return { id: String(r._id), label: r.label, name: r.name, at: r.createdAt.toISOString(), title: r.title, contentJson: (await revisionContent(r)) as JSONContent };
 }
 
 /** Remet une ancienne version (l'état actuel est gardé comme version, on peut revenir en arrière) */
@@ -245,7 +241,7 @@ export async function restoreRevision(id: string, revisionId: string, actor: Act
     const post = await findPost(id);
     if ((await editModeFor(actor, post)) !== "edit") throw new PostError("Tu ne peux pas modifier cet article pour l'instant.", 403);
     const rev = await getRevision(id, revisionId, actor);
-    await snapshot(post, "Avant restauration", actor);
+    await saveRevision(post, "restore", "Avant restauration", actor);
     return savePost(id, { title: rev.title, contentJson: rev.contentJson }, actor);
 }
 

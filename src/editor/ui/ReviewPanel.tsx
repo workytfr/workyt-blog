@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useEditorState, type Editor } from "@tiptap/react";
-import { Check, CheckCheck, GitCompare, History, Loader2, MessageSquare, RotateCcw, Send, X } from "lucide-react";
+import type { JSONContent } from "@tiptap/core";
+import { Check, CheckCheck, Eye, Flag, GitCompare, History, Loader2, MessageSquare, RotateCcw, Send, X } from "lucide-react";
 import { documentSuggestions, type SuggestionView } from "../marks";
 import { documentBlocks } from "../blocks";
 import { diffBlocks, diffWords, type DiffPart } from "@/lib/textDiff";
 import type { ThreadView } from "@/lib/review";
 import type { EditMode } from "@/lib/workflow";
-import { STATUS_LABELS, type WorkflowEntry } from "../types";
+import type { WorkflowEntry } from "../types";
 import { anchorComment, resolveSuggestion, unanchorComment } from "./suggestMode";
 
 /** Passage sélectionné à commenter (depuis la barre flottante) */
@@ -276,6 +277,7 @@ function Suggestions({ editor, items, canResolve }: { editor: Editor | null; ite
 
 interface RevisionItem {
     id: string;
+    kind: "session" | "step" | "restore";
     label: string;
     name: string;
     at: string;
@@ -284,34 +286,104 @@ interface RevisionItem {
     title: string;
 }
 
+/** Nombre de mots compté comme sur le serveur (lib/revisions) */
+function wordsOf(doc: JSONContent): number {
+    const parts: string[] = [];
+    const walk = (n: JSONContent) => {
+        if (n.text) parts.push(n.text);
+        n.content?.forEach(walk);
+        if (n.type && ["paragraph", "heading", "listItem", "taskItem", "tableCell", "tableHeader"].includes(n.type)) parts.push(" ");
+    };
+    walk(doc);
+    return parts.join("").replace(/\s+/g, " ").trim().split(" ").filter(Boolean).length;
+}
+
+/** Ce qu'on compare : les modifications d'une séance (jusqu'à la version suivante) ou une version avec maintenant */
+interface Comparison {
+    from: RevisionItem;
+    /** null : le texte actuel */
+    to: RevisionItem | null;
+    /** Modifications d'une personne (titre de la fenêtre) */
+    by?: string;
+}
+
+/**
+ * Qui a modifié quoi : chaque séance est l'état d'avant les modifications
+ * d'une personne ; ses modifications vont jusqu'à la version suivante (ou
+ * jusqu'à maintenant). Les étapes du circuit servent de repères.
+ */
 function Versions({ postId, editor, canRestore }: { postId: string; editor: Editor | null; canRestore: boolean }) {
     const [items, setItems] = useState<RevisionItem[] | null>(null);
-    const [compare, setCompare] = useState<RevisionItem | null>(null);
+    const [compare, setCompare] = useState<Comparison | null>(null);
+    const [person, setPerson] = useState("");
     useEffect(() => {
         void fetch(`/api/posts/${postId}/revisions/`)
             .then((r) => r.json())
             .then((j) => setItems(j.success ? j.data : []));
     }, [postId]);
+    const nowWords = useEditorState({ editor, selector: ({ editor: e }) => (e ? wordsOf(e.getJSON()) : 0) }) ?? 0;
+    const people = useMemo(() => [...new Set((items ?? []).filter((r) => r.kind !== "step").map((r) => r.name))], [items]);
+
     if (items === null) return <Loader2 className="mx-auto h-5 w-5 animate-spin text-ink/30" />;
     if (!items.length) return <p className="py-4 text-center text-sm text-ink/45">Pas encore de version enregistrée. Une version est gardée à chaque étape et à chaque séance d&apos;écriture.</p>;
     return (
         <div className="space-y-2">
-            {items.map((r) => (
-                <div key={r.id} className="rounded-2xl border border-ink/10 bg-white p-3 text-sm">
-                    <div className="flex items-center gap-2">
-                        <History className="h-4 w-4 shrink-0 text-ink/35" />
-                        <b className="min-w-0 flex-1 truncate">{r.label}</b>
-                        {r.status && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_LABELS[r.status]?.className ?? ""}`}>{STATUS_LABELS[r.status]?.label}</span>}
+            <div className="flex items-center gap-2">
+                <p className="min-w-0 flex-1 text-[11px] leading-snug text-ink/45">Séances d&apos;écriture gardées 30 jours, étapes du circuit gardées pour toujours.</p>
+                {people.length > 1 && (
+                    <select value={person} onChange={(e) => setPerson(e.target.value)} className="rounded-full border border-ink/10 bg-white px-2 py-1 text-xs" aria-label="Filtrer par personne">
+                        <option value="">Tout le monde</option>
+                        {people.map((p) => (
+                            <option key={p}>{p}</option>
+                        ))}
+                    </select>
+                )}
+            </div>
+            {items.map((r, i) => {
+                // Liste du plus récent au plus ancien : la version suivante est juste au-dessus
+                const next = i > 0 ? items[i - 1] : null;
+                if (person && (r.kind === "step" || r.name !== person)) return null;
+                if (r.kind === "step") {
+                    return (
+                        <div key={r.id} className="flex items-center gap-2 rounded-2xl bg-paper2 px-3 py-2 text-xs text-ink/60">
+                            <Flag className="h-3.5 w-3.5 shrink-0 text-accent" />
+                            <span className="min-w-0 flex-1 truncate">
+                                <b className="text-ink/80">{r.label}</b> · {r.name} · {when(r.at)}
+                            </span>
+                            <button type="button" onClick={() => setCompare({ from: r, to: null })} className="shrink-0 font-semibold hover:underline" disabled={!editor}>
+                                Comparer
+                            </button>
+                        </div>
+                    );
+                }
+                const delta = (next?.words ?? nowWords) - r.words;
+                return (
+                    <div key={r.id} className="rounded-2xl border border-ink/10 bg-white p-3 text-sm">
+                        <div className="flex items-center gap-2">
+                            <History className="h-4 w-4 shrink-0 text-ink/35" />
+                            <span className="min-w-0 flex-1 truncate">
+                                <b>{r.name}</b> {r.kind === "restore" ? "a remis une ancienne version" : "a modifié"}
+                            </span>
+                            {delta !== 0 && <span className={`shrink-0 text-[11px] font-semibold ${delta > 0 ? "text-[#2f6e14]" : "text-red-600"}`}>{delta > 0 ? `+${delta}` : delta} mots</span>}
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-ink/45">
+                            {when(r.at)}
+                            {next ? ` → ${when(next.at)}` : " → maintenant"}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            <button type="button" onClick={() => setCompare({ from: r, to: next, by: r.name })} className={`${btn} bg-ink text-white`} disabled={!editor}>
+                                <Eye className="h-3 w-3" /> Voir ses modifications
+                            </button>
+                            {next && (
+                                <button type="button" onClick={() => setCompare({ from: r, to: null })} className={`${btn} bg-paper2 text-ink/70`} disabled={!editor}>
+                                    <GitCompare className="h-3 w-3" /> Comparer avec maintenant
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="mt-0.5 text-[11px] text-ink/45">
-                        {when(r.at)} · {r.name} · {r.words} mots
-                    </div>
-                    <button type="button" onClick={() => setCompare(r)} className={`${btn} mt-2 bg-paper2 text-ink/70`} disabled={!editor}>
-                        <GitCompare className="h-3 w-3" /> Comparer avec maintenant
-                    </button>
-                </div>
-            ))}
-            {compare && editor && <CompareModal postId={postId} rev={compare} editor={editor} canRestore={canRestore} onClose={() => setCompare(null)} />}
+                );
+            })}
+            {compare && editor && <CompareModal postId={postId} cmp={compare} editor={editor} canRestore={canRestore} onClose={() => setCompare(null)} />}
         </div>
     );
 }
@@ -336,26 +408,34 @@ function DiffLine({ parts }: { parts: DiffPart[] }) {
     );
 }
 
-function CompareModal({ postId, rev, editor, canRestore, onClose }: { postId: string; rev: RevisionItem; editor: Editor; canRestore: boolean; onClose: () => void }) {
-    const [old, setOld] = useState<{ title: string; contentJson: unknown } | null>(null);
+type Loaded = { title: string; contentJson: unknown };
+const loadRevision = (postId: string, id: string): Promise<Loaded | null> =>
+    fetch(`/api/posts/${postId}/revisions/${id}/`)
+        .then((r) => r.json())
+        .then((j) => (j.success ? j.data : null));
+
+function CompareModal({ postId, cmp, editor, canRestore, onClose }: { postId: string; cmp: Comparison; editor: Editor; canRestore: boolean; onClose: () => void }) {
+    const { from, to, by } = cmp;
+    const [pair, setPair] = useState<{ old: Loaded; next: Loaded | null } | null>(null);
     const [restoring, setRestoring] = useState(false);
+    // Par défaut, seulement les passages modifiés : un long article se lit mal en entier
+    const [onlyChanges, setOnlyChanges] = useState(true);
     useEffect(() => {
-        void fetch(`/api/posts/${postId}/revisions/${rev.id}/`)
-            .then((r) => r.json())
-            .then((j) => j.success && setOld(j.data));
-    }, [postId, rev.id]);
+        void Promise.all([loadRevision(postId, from.id), to ? loadRevision(postId, to.id) : null]).then(([old, next]) => old && setPair({ old, next }));
+    }, [postId, from.id, to]);
     const titleInput = typeof document !== "undefined" ? (document.querySelector("textarea[aria-label=\"Titre de l'article\"]") as HTMLTextAreaElement | null) : null;
     const diff = useMemo(() => {
-        if (!old) return null;
-        const now = editor.getJSON();
-        return { title: diffWords(old.title, titleInput?.value || ""), blocks: diffBlocks(documentBlocks(old.contentJson as never), documentBlocks(now)) };
-    }, [old, editor, titleInput]);
-    const changed = diff?.blocks.filter((b) => b.some((p) => p.kind !== "same")).length ?? 0;
+        if (!pair) return null;
+        const after = pair.next ?? { title: titleInput?.value || "", contentJson: editor.getJSON() };
+        return { title: diffWords(pair.old.title, after.title), blocks: diffBlocks(documentBlocks(pair.old.contentJson as never), documentBlocks(after.contentJson as never)) };
+    }, [pair, editor, titleInput]);
+    const isChanged = (b: DiffPart[]) => b.some((p) => p.kind !== "same");
+    const changed = diff?.blocks.filter(isChanged).length ?? 0;
 
     const restore = async () => {
         if (!window.confirm("Remettre cette version ? Le texte actuel est gardé dans les versions, tu pourras y revenir.")) return;
         setRestoring(true);
-        const j = await fetch(`/api/posts/${postId}/revisions/${rev.id}/`, { method: "POST" }).then((r) => r.json());
+        const j = await fetch(`/api/posts/${postId}/revisions/${from.id}/`, { method: "POST" }).then((r) => r.json());
         if (j.success) window.location.reload();
         else {
             setRestoring(false);
@@ -369,14 +449,15 @@ function CompareModal({ postId, rev, editor, canRestore, onClose }: { postId: st
             <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-paper shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-3 border-b border-ink/10 px-6 py-4">
                     <div className="min-w-0 flex-1">
-                        <h2 className="font-display text-2xl">Comparer</h2>
+                        <h2 className="font-display text-2xl">{by ? `Modifications de ${by}` : "Comparer"}</h2>
                         <p className="text-xs text-ink/55">
-                            « {rev.label} » ({when(rev.at)}) → maintenant · <del className="bg-red-100 px-1 text-red-700">retiré</del> <ins className="bg-leaf/30 px-1 text-[#22560f] no-underline">ajouté</ins>
+                            {by ? when(from.at) : `« ${from.label} » (${when(from.at)})`} → {to ? when(to.at) : "maintenant"} · <del className="bg-red-100 px-1 text-red-700">retiré</del>{" "}
+                            <ins className="bg-leaf/30 px-1 text-[#22560f] no-underline">ajouté</ins>
                         </p>
                     </div>
                     {canRestore && (
-                        <button type="button" onClick={restore} disabled={restoring} className="btn-ghost px-3.5 py-2 text-sm">
-                            {restoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Restaurer cette version
+                        <button type="button" onClick={restore} disabled={restoring} className="btn-ghost px-3.5 py-2 text-sm" title={by ? `Remettre le texte d'avant les modifications de ${by}` : undefined}>
+                            {restoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} {by ? "Revenir avant" : "Restaurer cette version"}
                         </button>
                     )}
                     <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-paper2" aria-label="Fermer">
@@ -388,13 +469,28 @@ function CompareModal({ postId, rev, editor, canRestore, onClose }: { postId: st
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-ink/30" />
                     ) : (
                         <>
-                            <div className="font-display text-2xl">
-                                <DiffLine parts={diff.title} />
-                            </div>
-                            {changed === 0 && <p className="rounded-xl bg-paper2 px-3 py-2 text-sm text-ink/60">Le texte n&apos;a pas changé depuis cette version.</p>}
-                            {diff.blocks.map((b, i) => (
-                                <DiffLine key={i} parts={b} />
-                            ))}
+                            {(!onlyChanges || isChanged(diff.title)) && (
+                                <div className="font-display text-2xl">
+                                    <DiffLine parts={diff.title} />
+                                </div>
+                            )}
+                            {changed === 0 ? (
+                                <p className="rounded-xl bg-paper2 px-3 py-2 text-sm text-ink/60">{to ? "Le texte n'a pas changé pendant cette séance (seulement les réglages, ou rien)." : "Le texte n'a pas changé depuis cette version."}</p>
+                            ) : (
+                                <label className="flex items-center gap-2 text-xs text-ink/55">
+                                    <input type="checkbox" checked={onlyChanges} onChange={(e) => setOnlyChanges(e.target.checked)} />
+                                    Seulement {changed > 1 ? `les ${changed} passages modifiés` : "le passage modifié"}
+                                </label>
+                            )}
+                            {diff.blocks.map((b, i) =>
+                                !onlyChanges || isChanged(b) ? (
+                                    <div key={i}>
+                                        {/* Passages sautés entre deux modifications */}
+                                        {onlyChanges && i > 0 && !isChanged(diff.blocks[i - 1]) && <div className="mb-3 text-center text-xs tracking-[0.3em] text-ink/25">• • •</div>}
+                                        <DiffLine parts={b} />
+                                    </div>
+                                ) : null
+                            )}
                         </>
                     )}
                 </div>

@@ -14,6 +14,8 @@ import Category from "@/models/Category";
 import Media from "@/models/Media";
 import Redirect from "@/models/Redirect";
 import Revision from "@/models/Revision";
+import { needsSession, sessionLabel } from "./revisionRules";
+import { saveRevision } from "./revisions";
 import { documentSuggestions, withoutSuggestions } from "@/editor/marks";
 import { editMode, type EditMode, type WorkflowContext } from "./workflow";
 import { lockedByOther } from "./lockRule";
@@ -166,22 +168,10 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor) {
     // Le correcteur ne touche qu'au texte, en suggestions
     if (mode === "suggest") input = { contentJson: input.contentJson };
 
-    // Une version par séance d'édition : l'état d'avant, dès qu'une autre personne s'y met ou après 30 min
+    // Une version par séance d'édition : l'état d'avant, dès qu'une autre personne s'y met, après une étape ou après 30 min
     if ((input.contentJson || typeof input.title === "string") && post.contentJson) {
-        const last = await Revision.findOne({ post: post._id }).sort({ createdAt: -1 }).select("member createdAt").lean();
-        if (!last || String(last.member) !== actor.memberId || Date.now() - last.createdAt.getTime() > 30 * 60_000) {
-            await Revision.create({
-                post: post._id,
-                title: post.title,
-                excerpt: post.excerpt,
-                contentJson: post.contentJson,
-                status: post.status,
-                label: `Avant les modifications de ${actor.name}`,
-                member: actor.memberId,
-                name: actor.name,
-                words: documentText(post.contentJson as JSONContent).split(" ").filter(Boolean).length,
-            });
-        }
+        const last = await Revision.findOne({ post: post._id }).sort({ createdAt: -1 }).select("kind label member createdAt").lean();
+        if (needsSession(last, actor.memberId)) await saveRevision(post, "session", sessionLabel(actor.name), actor);
     }
 
     // Adresse automatique (« brouillon-… » ou tirée du titre) : elle suit le titre tant que l'article n'a jamais été publié
