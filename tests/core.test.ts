@@ -73,3 +73,14 @@ test("HTML d'article assaini", () => {
     assert.equal(plainText("<p>Un <b>deux</b></p>\n<p>trois</p>"), "Un deux trois");
     assert.equal(readingMinutes("<p>" + "mot ".repeat(660) + "</p>"), 3);
 });
+
+test("image à la une pas répétée en tête du texte", () => {
+    const fig = (src: string) => `<figure class="wk-figure"><div class="wk-figure-media"><img src="${src}" alt="" /><span class="credit">X · Unsplash</span></div><figcaption>Photo</figcaption></figure>`;
+    const une = "https://s3.example/une.webp";
+    const html = renderPostHtml(`${fig(une)}<p>Intro</p>${fig(une)}`, { featuredUrl: une });
+    assert.ok(html.startsWith('<p class="lead">Intro'), "première image retirée");
+    assert.equal(html.match(/une\.webp/g)?.length, 1, "la même image plus loin dans le texte reste");
+    assert.ok(renderPostHtml(`${fig("https://s3.example/autre.webp")}<p>Intro</p>`, { featuredUrl: une }).includes("autre.webp"), "une autre image en tête reste");
+    assert.ok(renderPostHtml(`<p><img src="${une}?w=800"></p><p>Intro</p>`, { featuredUrl: une }).startsWith('<p class="lead">Intro'), "image seule dans un paragraphe");
+    assert.ok(renderPostHtml(`${fig(une)}<p>Intro</p>`).includes("une.webp"), "sans image à la une, rien ne change");
+});

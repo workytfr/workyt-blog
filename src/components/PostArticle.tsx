@@ -48,7 +48,7 @@ export default async function PostArticle({
     // Modules (lot 4) : ceux placés dans le texte s'y affichent, les autres à la fin ; les sources en dernier
     const sources = post.modules.flatMap((m) => (m.type === "sources" ? m.data.items : []));
     // Sommaire : carte avant le premier titre, et version collante dans la colonne
-    const { html, toc } = renderArticle(post.contentHtml, { linkIcons: true, sourceIds: sources.map((s) => s.id), affiliates: post.affiliates });
+    const { html, toc } = renderArticle(post.contentHtml, { linkIcons: true, sourceIds: sources.map((s) => s.id), affiliates: post.affiliates, featuredUrl: img?.url });
     const parts = splitAtModules(html);
     const placed = new Set(parts.flatMap((p) => ("moduleId" in p ? [p.moduleId] : [])));
     const byId = new Map(post.modules.map((m) => [m.id, m]));

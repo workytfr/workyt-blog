@@ -85,7 +85,13 @@ function renderMath(html: string): string {
         .replace(/<div\b[^>]*data-type="block-math"[^>]*><\/div>/g, (tag) => tex(latexOf(tag), true));
 }
 
-type RenderOptions = { linkIcons?: boolean; sourceIds?: string[]; affiliates?: Record<string, string> };
+type RenderOptions = {
+    linkIcons?: boolean;
+    sourceIds?: string[];
+    affiliates?: Record<string, string>;
+    /** Image à la une, déjà affichée dans le héros : retirée du début du texte si elle y est aussi */
+    featuredUrl?: string;
+};
 
 export function renderPostHtml(html: string, opts: RenderOptions = {}): string {
     return render(html, opts).html;
@@ -98,13 +104,29 @@ export function renderArticle(html: string, opts: RenderOptions = {}): { html: s
 }
 
 function render(html: string, opts: RenderOptions): { html: string; toc: TocItem[] } {
-    const clean = sanitizeHtml(html || "", SANITIZE);
+    const sanitized = sanitizeHtml(html || "", SANITIZE);
+    const clean = opts.featuredUrl ? withoutLeadingImage(sanitized, opts.featuredUrl) : sanitized;
     const { html: anchored, toc } = anchorHeadings(clean);
     // Logo du site à droite des liens : sur le blog seulement (pas dans le flux RSS, où les adresses relatives casseraient)
     const withIcons = wrapTables(wrapQuotes(wrapHeadings(opts.linkIcons ? addLinkIcons(anchored, opts.affiliates) : anchored)));
     // Lettrine sur le premier paragraphe du texte (pas celui d'une citation, d'un encadré, d'une liste…)
     return { html: withLead(renderCitations(renderMath(withIcons), opts.sourceIds ?? [])), toc };
 }
+
+/**
+ * Retire l'image qui ouvre le texte quand c'est l'image à la une : beaucoup
+ * d'articles (WordPress compris) la remettent en tête du contenu, et elle
+ * s'affichait alors deux fois, dans le héros puis sous le titre.
+ */
+export function withoutLeadingImage(html: string, url: string): string {
+    const first = /^\s*(<figure\b[^>]*>[\s\S]*?<\/figure>|<p>\s*<img\b[^>]*>\s*<\/p>|<img\b[^>]*>)/.exec(html);
+    if (!first) return html;
+    const src = /<img\b[^>]*\ssrc="([^"]*)"/.exec(first[1])?.[1];
+    return src && sameImage(decodeEntities(src), url) ? html.slice(first[0].length) : html;
+}
+
+/** Même fichier, aux paramètres d'adresse près */
+const sameImage = (a: string, b: string) => a.split("?")[0] === b.split("?")[0];
 
 /* ─── Sommaire ─── */
 
