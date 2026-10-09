@@ -49,7 +49,8 @@ test("images d'un document et texte", () => {
 test("crédit d'image obligatoire", () => {
     assert.equal(checkCredit({ author: "Jean", source: "Unsplash", license: "Licence Unsplash", sourceUrl: "https://unsplash.com/x" }).errors.length, 0);
     assert.equal(checkCredit({ author: "Rédaction Workyt", source: "Photo maison", license: "Photo maison" }).errors.length, 0, "photo maison : pas de lien demandé");
-    assert.equal(checkCredit({}).errors.length, 4);
+    assert.equal(checkCredit({ author: "Jean", source: "Wikimedia Commons", license: "CC BY-SA" }).errors.length, 0, "le lien vers l'original est facultatif");
+    assert.equal(checkCredit({}).errors.length, 3);
     assert.match(checkCredit({ author: "X", source: "Kit presse", license: "Kit presse (usage autorisé)", sourceUrl: "https://a.b" }).errors.join(), /preuve/);
     assert.match(checkCredit({ author: "X", source: "Autre", license: "CC BY-NC", sourceUrl: "https://a.b" }).warnings.join(), /non commerciale/);
     assert.match(checkCredit({ author: "X", source: "Autre", license: "CC BY", sourceUrl: "javascript:alert(1)" }).errors.join(), /http/);

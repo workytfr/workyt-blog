@@ -1,7 +1,7 @@
 /**
  * Provenances et licences des images (cahier des charges § 8.4). Une image
- * n'entre dans la médiathèque qu'avec son auteur, sa provenance, sa licence et
- * (sauf photo maison) le lien vers l'original.
+ * n'entre dans la médiathèque qu'avec son auteur, sa provenance et sa licence.
+ * Le lien vers l'original est facultatif (souvent perdu pour les images anciennes).
  */
 
 export const IMAGE_SOURCES = [
@@ -51,11 +51,9 @@ export interface ImageCreditInput {
 export function checkCredit(c: ImageCreditInput): { errors: string[]; warnings: string[] } {
     const errors: string[] = [];
     const warnings: string[] = [];
-    const own = c.source === "Photo maison" || c.license === "Photo maison";
     if (!c.author?.trim()) errors.push("Indique l'auteur de l'image (ou « Rédaction Workyt » pour une photo maison).");
     if (!c.source?.trim()) errors.push("Indique la provenance de l'image.");
     if (!c.license?.trim()) errors.push("Indique la licence de l'image.");
-    if (!own && !c.sourceUrl?.trim()) errors.push("Ajoute le lien vers l'image d'origine.");
     if (c.sourceUrl?.trim() && !/^https?:\/\//i.test(c.sourceUrl.trim())) errors.push("Le lien vers l'original doit commencer par http:// ou https://.");
     if (c.license && PROOF_REQUIRED.includes(c.license) && !c.proofUrl?.trim()) errors.push("Pour cette licence, ajoute la preuve de l'autorisation (lien vers l'e-mail ou la page presse).");
     if (c.license === "CC BY-NC") warnings.push("Licence « non commerciale » : interdite dans un article qui contient des liens affiliés.");

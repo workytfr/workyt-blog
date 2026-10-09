@@ -144,6 +144,8 @@ export interface SaveInput {
     primaryCategory?: string | null;
     tags?: string[];
     featuredMediaId?: string | null;
+    /** Texte alternatif de l'image à la une, modifiable dans l'éditeur */
+    featuredAlt?: string;
     seo?: { title?: string; description?: string; focusKeywords?: string[]; noindex?: boolean };
     modules?: unknown;
     isPillar?: boolean;
@@ -253,6 +255,10 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor) {
             rightsVerified: m.rightsVerified,
             rightsToCheck: m.rightsToCheck,
         };
+    }
+    if (typeof input.featuredAlt === "string" && post.featuredImage?.url) {
+        post.featuredImage.alt = input.featuredAlt.trim().slice(0, 300);
+        post.markModified("featuredImage");
     }
 
     if (input.modules !== undefined) await saveModules(post, input.modules, actor);

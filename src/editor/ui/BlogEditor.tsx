@@ -251,6 +251,7 @@ export default function BlogEditor({ post, categories, me, initialReview, team }
             }
             if (fields.has("tags")) body.tags = meta.tags;
             if (fields.has("featured")) body.featuredMediaId = meta.featuredImage ? (meta.featuredMediaId ?? undefined) : null;
+            if (fields.has("featuredAlt") && meta.featuredImage) body.featuredAlt = meta.featuredImage.alt;
             if (fields.has("seo")) body.seo = meta.seo;
             if (fields.has("modules")) body.modules = modules;
             if (fields.has("pillar")) body.isPillar = meta.isPillar;
@@ -440,7 +441,7 @@ export default function BlogEditor({ post, categories, me, initialReview, team }
     /** « Voir » d'un critère SEO : le champ concerné, ou le bloc du texte */
     const goToTarget = (t: SeoTarget) => {
         if ("field" in t) {
-            const ids = { seoTitle: ["seo", "seo-title"], seoDescription: ["seo", "seo-description"], keywords: ["seo", "seo-keywords"], slug: ["article", "post-slug"], featured: ["article", ""] } as const;
+            const ids = { seoTitle: ["seo", "seo-title"], seoDescription: ["seo", "seo-description"], keywords: ["seo", "seo-keywords"], slug: ["article", "post-slug"], featured: ["article", "featured-alt"] } as const;
             const [tabName, id] = ids[t.field];
             setTab(tabName);
             if (id) setTimeout(() => document.getElementById(id)?.focus(), 50);

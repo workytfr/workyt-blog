@@ -5,6 +5,7 @@ import { useEditorState, type Editor } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import { AlignCenter, AlignLeft, AlignRight, Camera, ImagePlus, Star, X } from "lucide-react";
 import { IMAGE_LICENSES, IMAGE_SOURCES, checkCredit } from "@/lib/licenses";
+import SourceUrlInput from "./SourceUrlInput";
 import { CALLOUT_VARIANTS } from "../nodes";
 import type { EditorCategory } from "../types";
 
@@ -144,8 +145,17 @@ function ArticleTab({ state, categories, authors, onChange, onPickFeatured }: { 
                                 <Camera className="h-3 w-3 text-accent" /> {img.credit.author} · {img.credit.source}
                             </span>
                         </div>
+                        <label className="block px-3 pt-2.5">
+                            <span className="text-[11px] font-semibold text-ink/60">Texte alternatif *</span>
+                            <input
+                                id="featured-alt"
+                                value={img.alt || ""}
+                                onChange={(e) => onChange({ featuredImage: { ...img, alt: e.target.value } }, "featuredAlt")}
+                                placeholder="Décris l'image pour les lecteurs malvoyants"
+                                className={`${field} mt-1 ${img.alt?.trim() ? "" : "border-red-300 ring-2 ring-red-100"}`}
+                            />
+                        </label>
                         <div className="flex items-center gap-2 px-3 py-2 text-xs">
-                            <span className="truncate text-ink/60">{img.alt || "Sans texte alternatif"}</span>
                             <button type="button" onClick={onPickFeatured} className="ml-auto shrink-0 font-semibold text-accentdark">
                                 Changer
                             </button>
@@ -354,7 +364,7 @@ function BlockTab({ editor, onReplaceImage }: { editor: Editor | null; onReplace
                                 <option key={x}>{x}</option>
                             ))}
                         </select>
-                        <input value={a.creditUrl || ""} onChange={set("creditUrl")} placeholder="Lien vers l'original" className={`${field} col-span-2`} />
+                        <SourceUrlInput value={a.creditUrl || ""} onChange={(v) => editor.chain().updateAttributes("image", { creditUrl: v }).run()} className="col-span-2" />
                     </div>
                     {errors.length > 0 && (
                         <ul className="mt-2 space-y-0.5 text-[11px] text-red-700">

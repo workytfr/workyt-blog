@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Search, ShieldCheck, Upload, X } from "lucide-react";
 import { IMAGE_LICENSES, IMAGE_SOURCES, checkCredit } from "@/lib/licenses";
+import SourceUrlInput from "@/editor/ui/SourceUrlInput";
 import type { MediaView } from "@/lib/media";
 import { UploadForm } from "@/editor/ui/MediaPicker";
 
@@ -159,7 +160,7 @@ function MediaDetails({ media, canVerify, onSaved }: { media: MediaView; canVeri
                             <option key={s}>{s}</option>
                         ))}
                     </select>
-                    <input value={credit.sourceUrl} onChange={(e) => setCredit({ ...credit, sourceUrl: e.target.value })} placeholder="Lien vers l'original" className={`${field} col-span-2`} />
+                    <SourceUrlInput value={credit.sourceUrl} onChange={(v) => setCredit({ ...credit, sourceUrl: v })} className="col-span-2" />
                     <input value={credit.proofUrl} onChange={(e) => setCredit({ ...credit, proofUrl: e.target.value })} placeholder="Preuve d'autorisation (si besoin)" className={`${field} col-span-2`} />
                 </div>
                 {warnings.map((w) => (

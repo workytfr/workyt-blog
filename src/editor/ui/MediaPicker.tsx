@@ -6,6 +6,7 @@ import { AlertTriangle, Check, Globe, ImagePlus, Loader2, Search, ShieldCheck, U
 import { IMAGE_LICENSES, IMAGE_SOURCES, PROOF_REQUIRED, checkCredit } from "@/lib/licenses";
 import type { MediaView } from "@/lib/media";
 import StockSearch from "./StockSearch";
+import SourceUrlInput from "./SourceUrlInput";
 
 /**
  * Médiathèque : choisir une image, ou en envoyer une nouvelle. Une image
@@ -217,8 +218,8 @@ export function UploadForm({ onDone }: { onDone: (m: MediaView) => void }) {
                         </select>
                     </label>
                     <label className="col-span-2 text-xs font-semibold text-ink/60">
-                        Lien vers l&apos;image d&apos;origine {credit.source !== "Photo maison" && "*"}
-                        <input value={credit.sourceUrl} onChange={set("sourceUrl")} placeholder="https://unsplash.com/photos/…" className={`${field} mt-1`} />
+                        Lien vers l&apos;image d&apos;origine <span className="font-normal">(facultatif)</span>
+                        <SourceUrlInput value={credit.sourceUrl} onChange={(v) => setCredit((c) => ({ ...c, sourceUrl: v }))} placeholder="https://unsplash.com/photos/…" className="mt-1" />
                     </label>
                     {PROOF_REQUIRED.includes(credit.license) && (
                         <label className="col-span-2 text-xs font-semibold text-ink/60">
