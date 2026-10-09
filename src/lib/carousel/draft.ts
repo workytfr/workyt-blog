@@ -12,8 +12,11 @@ function inline(n: JSONContent): string {
     if (n.type === "text") {
         const t = n.text ?? "";
         const marks = n.marks?.map((m) => m.type) ?? [];
-        if (marks.includes("highlight")) return `==${t}==`;
-        if (marks.includes("bold")) return `**${t}**`;
+        // Les espaces restent hors des marqueurs : « ** mot **» se lirait mal
+        const [, before, word, after] = /^(\s*)([\s\S]*?)(\s*)$/.exec(t) ?? ["", "", t, ""];
+        if (!word) return t;
+        if (marks.includes("highlight")) return `${before}==${word}==${after}`;
+        if (marks.includes("bold")) return `${before}**${word}**${after}`;
         return t;
     }
     return (n.content ?? []).map(inline).join(n.type === "paragraph" || n.type === "listItem" ? " " : "");

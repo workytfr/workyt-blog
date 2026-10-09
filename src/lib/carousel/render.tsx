@@ -116,7 +116,9 @@ async function darkBackground(color: string, photo: Buffer | null): Promise<Buff
     return sharp({ create: { width: W, height: H, channels: 4, background: INK } }).composite(layers).png().toBuffer();
 }
 
-type Token = { text: string; bold?: boolean; mark?: boolean; space: boolean };
+type Part = { text: string; bold?: boolean; mark?: boolean };
+/** Un mot, éventuellement fait de morceaux de styles différents (« s’**organiser**, ») */
+type Token = { parts: Part[]; space: boolean };
 
 /** Mots du texte avec leur style. La ponctuation « haute » reste collée au mot (espace insécable). */
 function tokens(text: string): Token[] {
@@ -130,8 +132,11 @@ function tokens(text: string): Token[] {
                 continue;
             }
             const prev = out[out.length - 1];
-            if (prev && (/^[:;!?»]/.test(piece) || prev.text.endsWith("«"))) prev.text += (space ? " " : "") + piece;
-            else out.push({ text: piece, bold: run.bold, mark: run.mark, space: space && out.length > 0 });
+            const part = { text: piece, bold: run.bold, mark: run.mark };
+            const prevText = prev?.parts.map((x) => x.text).join("") ?? "";
+            if (prev && !space) prev.parts.push(part);
+            else if (prev && (/^[:;!?»]/.test(piece) || prevText.endsWith("«"))) prev.parts.push({ ...part, text: "\u00a0" + piece });
+            else out.push({ parts: [part], space: space && out.length > 0 });
             space = false;
         }
     }
@@ -146,23 +151,34 @@ function tokens(text: string): Token[] {
 function Rich({ text, size, markAs = "highlight" }: { text: string; size: number; markAs?: "highlight" | "color" }) {
     const space = Math.round(size * 0.27);
     const list = tokens(text);
+    const marked = (t?: Token) => !!t && t.parts.every((x) => x.mark);
+    const partStyle = (x: Part) => {
+        const style: Record<string, unknown> = {};
+        if (x.bold) style.fontWeight = 700;
+        if (x.mark && markAs === "color") style.color = ORANGE;
+        if (x.mark && markAs === "highlight") style.backgroundImage = `linear-gradient(180deg, rgba(255,181,71,0) 52%, rgba(255,181,71,0.85) 52%, rgba(255,181,71,0.85) 90%, rgba(255,181,71,0) 90%)`;
+        return style;
+    };
     // Conteneur à lui : un fragment ne serait pas « aplati » dans le parent
     return (
         <div style={{ display: "flex", flexWrap: "wrap", width: "100%" }}>
             {list.map((t, i) => {
                 // L'espace suit le mot : en fin de ligne, il ne décale rien
                 const next = list[i + 1];
-                const style: Record<string, unknown> = {};
-                if (t.bold) style.fontWeight = 700;
-                if (t.mark && markAs === "color") style.color = ORANGE;
-                if (t.mark && markAs === "highlight") style.backgroundImage = `linear-gradient(180deg, rgba(255,181,71,0) 52%, rgba(255,181,71,0.85) 52%, rgba(255,181,71,0.85) 90%, rgba(255,181,71,0) 90%)`;
+                const style: Record<string, unknown> = { display: "flex" };
                 // Entre deux mots surlignés, l'espace est surligné aussi
-                if (next?.space && t.mark && next.mark && markAs === "highlight") style.paddingRight = space;
-                else if (next?.space) style.marginRight = space;
+                if (next?.space && marked(t) && marked(next) && markAs === "highlight") {
+                    style.paddingRight = space;
+                    style.backgroundImage = partStyle({ text: "", mark: true }).backgroundImage;
+                } else if (next?.space) style.marginRight = space;
                 // Un <div> par mot : les <span> ne passent pas à la ligne dans un conteneur flex
                 return (
                     <div key={i} style={style}>
-                        {t.text}
+                        {t.parts.map((x, j) => (
+                            <span key={j} style={partStyle(x)}>
+                                {x.text}
+                            </span>
+                        ))}
                     </div>
                 );
             })}
