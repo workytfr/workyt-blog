@@ -7,7 +7,7 @@ import {
   menuCategories,
   mostReadPosts,
 } from "@/lib/content";
-import { archiveMetadata } from "@/lib/seo";
+import { archiveMetadata, homeJsonLd, jsonLdString } from "@/lib/seo";
 import { SITE } from "@/lib/site";
 import Archive from "@/components/Archive";
 import Bento, { CategoriesCorner, OlderCorner } from "@/components/home/Bento";
@@ -17,7 +17,8 @@ import CategorySection from "@/components/home/CategorySection";
 /** Accueil (page 1) et pages /page/<n>/ des articles plus anciens */
 export function homeMetadata(page: number): Metadata {
   return archiveMetadata({
-    title: SITE.tagline,
+    title: SITE.homeTitle,
+    withSiteName: false,
     description: SITE.description,
     path: "/",
     page,
@@ -69,6 +70,10 @@ export default async function Home() {
     <div className="mx-auto max-w-[1600px] px-6 pb-20 pt-8 lg:px-10">
       {/* Titre de la page pour les moteurs et lecteurs d'écran (pas de grand titre visible) */}
       <h1 className="sr-only">Le blog de Workyt</h1>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(homeJsonLd()) }}
+      />
 
       {latest.items.length === 0 ? (
         <p className="mt-10 rounded-[28px] border border-dashed border-ink/15 bg-white p-12 text-center text-ink/60">

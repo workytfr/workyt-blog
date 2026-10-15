@@ -44,16 +44,18 @@ export function ogCard(card?: { title: string; kicker?: string }) {
     return { url: absoluteUrl(`/og/${q}`), width: 1200, height: 630, alt: card?.title || "Le blog de Workyt", type: "image/jpeg" };
 }
 
-export function archiveMetadata(opts: { title: string; description?: string; path: string; page?: number; noindex?: boolean; card?: { title: string; kicker?: string } }): Metadata {
+/** `withSiteName: false` : titre déjà complet, sans « - Workyt » ajouté (accueil) */
+export function archiveMetadata(opts: { title: string; description?: string; path: string; page?: number; noindex?: boolean; withSiteName?: boolean; card?: { title: string; kicker?: string } }): Metadata {
     const paged = opts.page && opts.page > 1 ? ` ${SITE.titleSeparator} Page ${opts.page}` : "";
     const path = opts.page && opts.page > 1 ? `${opts.path}page/${opts.page}/` : opts.path;
+    const titled = (t: string) => (opts.withSiteName === false ? t : pageTitle(t));
     return {
-        title: { absolute: pageTitle(`${opts.title}${paged}`) },
+        title: { absolute: titled(`${opts.title}${paged}`) },
         description: opts.description,
         alternates: { canonical: absoluteUrl(path) },
         robots: opts.noindex ? { index: false, follow: true } : undefined,
-        openGraph: { type: "website", url: absoluteUrl(path), title: pageTitle(opts.title), description: opts.description, siteName: SITE.name, locale: SITE.locale, images: [ogCard(opts.card)] },
-        twitter: { card: "summary_large_image", title: pageTitle(opts.title), description: opts.description, images: [ogCard(opts.card).url] },
+        openGraph: { type: "website", url: absoluteUrl(path), title: titled(opts.title), description: opts.description, siteName: SITE.name, locale: SITE.locale, images: [ogCard(opts.card)] },
+        twitter: { card: "summary_large_image", title: titled(opts.title), description: opts.description, images: [ogCard(opts.card).url] },
     };
 }
 
@@ -66,6 +68,37 @@ const ORGANIZATION = {
     url: SITE.workytUrl,
     logo: { "@type": "ImageObject", url: `${SITE.url}/logo-workyt.png` },
 };
+
+const WEBSITE = {
+    "@type": "WebSite",
+    "@id": `${SITE.url}/#website`,
+    url: SITE.url,
+    name: SITE.name,
+    publisher: { "@id": `${SITE.url}/#organization` },
+    inLanguage: "fr-FR",
+    potentialAction: { "@type": "SearchAction", target: `${SITE.url}/?s={search_term_string}`, "query-input": "required name=search_term_string" },
+};
+
+/** Accueil : le site, l'association et la page elle-même (Rank Math en mettait autant) */
+export function homeJsonLd() {
+    return {
+        "@context": "https://schema.org",
+        "@graph": [
+            ORGANIZATION,
+            WEBSITE,
+            {
+                "@type": "CollectionPage",
+                "@id": `${SITE.url}/#webpage`,
+                url: absoluteUrl("/"),
+                name: SITE.homeTitle,
+                description: SITE.description,
+                isPartOf: { "@id": `${SITE.url}/#website` },
+                about: { "@id": `${SITE.url}/#organization` },
+                inLanguage: "fr-FR",
+            },
+        ],
+    };
+}
 
 export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
     return {
@@ -97,15 +130,7 @@ export function postJsonLd(post: PostView, comments: JsonLdComment[] = []) {
         "@context": "https://schema.org",
         "@graph": [
             ORGANIZATION,
-            {
-                "@type": "WebSite",
-                "@id": `${SITE.url}/#website`,
-                url: SITE.url,
-                name: SITE.name,
-                publisher: { "@id": `${SITE.url}/#organization` },
-                inLanguage: "fr-FR",
-                potentialAction: { "@type": "SearchAction", target: `${SITE.url}/?s={search_term_string}`, "query-input": "required name=search_term_string" },
-            },
+            WEBSITE,
             breadcrumbJsonLd(crumbs),
             {
                 "@type": "Article",

@@ -7,6 +7,8 @@ export const SITE = {
     url: (process.env.NEXT_PUBLIC_SITE_URL || "https://blog.workyt.fr").replace(/\/$/, ""),
     name: "Workyt",
     tagline: "Blog",
+    /** Titre de l'accueil, complet (Rank Math n'affichait que « Blog - Workyt », trop pauvre) */
+    homeTitle: "Le blog Workyt : conseils et méthodes pour réussir sa scolarité",
     titleSeparator: "-",
     description:
         "Le blog de l'association Workyt : actualités, conseils et méthodes, interviews, culture et tests pour réussir sa scolarité.",

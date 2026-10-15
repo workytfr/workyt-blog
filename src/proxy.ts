@@ -1,12 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { lookupRedirect, recordHit } from "@/lib/redirects";
+import { flatCategoryPath } from "@/lib/legacyPaths";
 
 /**
  * Avant chaque page :
  *  1. adresses WordPress par identifiant (« /?p=123 », « ?page_id= »,
  *     « ?attachment_id= », « ?cat= »…) → résolues par /api/legacy/ ;
  *  2. table des redirections (Rank Math, migration, manuelles) → 301/302,
- *     ou 410 pour un contenu supprimé définitivement.
+ *     ou 410 pour un contenu supprimé définitivement ;
+ *  3. rubriques imbriquées de WordPress (« /category/actualites/education/ ») → 301 ;
+ *  4. pages 2, 3… d'une adresse redirigée → même destination que la page 1.
  */
 const LEGACY_PARAMS = ["p", "page_id", "attachment_id", "cat", "tag", "author"];
 
@@ -39,6 +42,19 @@ export async function proxy(request: NextRequest) {
         }
         const target = /^https?:\/\//.test(rule.to) ? rule.to : new URL(rule.to, request.url).toString();
         return NextResponse.redirect(target, rule.status);
+    }
+
+    const nested = flatCategoryPath(pathname);
+    if (nested) return NextResponse.redirect(new URL(nested, request.url), 301);
+
+    // Page 2, 3… d'une adresse redirigée (« /home-tech/page/26/ », « /category/workyt/page/2/ ») : même destination
+    const pagedBase = pathname.match(/^(\/.+\/)page\/\d+\/?$/);
+    if (pagedBase) {
+        const base = await lookupRedirect(pagedBase[1]);
+        if (base && base.status !== 410) {
+            const target = /^https?:\/\//.test(base.to) ? base.to : new URL(base.to, request.url).toString();
+            return NextResponse.redirect(target, base.status);
+        }
     }
 
     return NextResponse.next();

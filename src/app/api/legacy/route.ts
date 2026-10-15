@@ -5,6 +5,10 @@ import Category from "@/models/Category";
 import Tag from "@/models/Tag";
 import Author from "@/models/Author";
 import { lookupRedirect } from "@/lib/redirects";
+import { SITE } from "@/lib/site";
+
+// Adresse publique du blog : derrière l'hébergeur, req.url porte l'hôte interne (« 0.0.0.0:3100 »)
+const SITE_ORIGIN = `${SITE.url}/`;
 
 /**
  * Anciennes adresses WordPress par identifiant (reçues via le proxy) :
@@ -14,8 +18,8 @@ import { lookupRedirect } from "@/lib/redirects";
  */
 export async function GET(req: NextRequest) {
     const q = req.nextUrl.searchParams;
-    const toHome = () => NextResponse.redirect(new URL("/", req.url), 301);
-    const go = (path: string) => NextResponse.redirect(new URL(path, req.url), 301);
+    const toHome = () => NextResponse.redirect(new URL("/", SITE_ORIGIN), 301);
+    const go = (path: string) => NextResponse.redirect(new URL(path, SITE_ORIGIN), 301);
     const wpId = (key: string) => {
         const n = Number(q.get(key));
         return Number.isInteger(n) && n > 0 ? n : null;
@@ -29,14 +33,14 @@ export async function GET(req: NextRequest) {
         if (post) return go(`/${post.slug}/`);
         // Page WordPress non reprise : sa redirection vers workyt.fr est dans la table
         const rule = await lookupRedirect(`/?page_id=${p}`);
-        if (rule && rule.status !== 410) return NextResponse.redirect(/^https?:/.test(rule.to) ? rule.to : new URL(rule.to, req.url), 301);
+        if (rule && rule.status !== 410) return NextResponse.redirect(/^https?:/.test(rule.to) ? rule.to : new URL(rule.to, SITE_ORIGIN), 301);
         return toHome();
     }
     const att = wpId("attachment_id");
     if (att) {
         // Page de pièce jointe : on renvoie vers l'article qui contenait l'image (table de migration), sinon l'accueil
         const rule = await lookupRedirect(`/?attachment_id=${att}`);
-        return rule && rule.status !== 410 ? NextResponse.redirect(new URL(rule.to, req.url), 301) : toHome();
+        return rule && rule.status !== 410 ? NextResponse.redirect(new URL(rule.to, SITE_ORIGIN), 301) : toHome();
     }
     const cat = wpId("cat");
     if (cat) {

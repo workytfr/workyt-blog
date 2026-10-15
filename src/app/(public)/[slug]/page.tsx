@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { adjacentPosts, getPostBySlug, relatedPosts } from "@/lib/content";
 import { postMetadata } from "@/lib/seo";
 import PostArticle from "@/components/PostArticle";
@@ -22,7 +22,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PostPage({ params }: Props) {
     const { slug } = await params;
     const post = await getPostBySlug(decodeURIComponent(slug));
-    if (!post) notFound();
+    if (!post) {
+        // « /GOLDEN-GLOBES-2026/ » : WordPress renvoyait vers l'adresse en minuscules, on fait de même
+        const lower = decodeURIComponent(slug).toLowerCase();
+        if (lower !== decodeURIComponent(slug) && (await getPostBySlug(lower))) permanentRedirect(`/${encodeURIComponent(lower)}/`);
+        notFound();
+    }
     const [{ previous, next }, related] = await Promise.all([adjacentPosts(post), relatedPosts(post, 4)]);
     return <PostArticle post={post} previous={previous} next={next} related={related} />;
 }

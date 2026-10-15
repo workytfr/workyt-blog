@@ -4,15 +4,20 @@ import { getTagBySlug, listPosts } from "@/lib/content";
 import { archiveMetadata } from "@/lib/seo";
 import Archive from "@/components/Archive";
 
+const MIN_INDEXED_POSTS = 3;
+
 /** Étiquette : /tag/<slug>/ (hors sitemap, comme avec Rank Math) */
 export async function tagMetadata(slug: string, page: number): Promise<Metadata> {
     const tag = await getTagBySlug(decodeURIComponent(slug));
     if (!tag) return { title: "Étiquette introuvable", robots: { index: false } };
+    // Moins de 3 articles : page trop mince pour Google, mais ses liens restent suivis
+    const { total } = await listPosts({ perPage: 1, tag: tag.id });
     return archiveMetadata({
         title: tag.name,
         description: tag.description || `Les articles du blog Workyt sur le thème « ${tag.name} ».`,
         path: `/tag/${tag.slug}/`,
         page,
+        noindex: total < MIN_INDEXED_POSTS,
         card: { title: `#${tag.name}`, kicker: "Étiquette" },
     });
 }
