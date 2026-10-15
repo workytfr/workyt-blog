@@ -11,6 +11,7 @@ import Post from "@/models/Post";
 import Category from "@/models/Category";
 import Tag from "@/models/Tag";
 import Author from "@/models/Author";
+import { containsRegex } from "./searchRegex";
 
 /* ─── Formes envoyées aux pages (sérialisables) ─── */
 
@@ -202,7 +203,7 @@ export interface PostList {
 }
 
 export async function listPosts(
-    opts: { page?: number; perPage?: number; category?: Types.ObjectId | string; categoryIds?: (Types.ObjectId | string)[]; tag?: Types.ObjectId | string; author?: Types.ObjectId | string; search?: string; after?: Date } = {}
+    opts: { page?: number; perPage?: number; category?: Types.ObjectId | string; categoryIds?: (Types.ObjectId | string)[]; tag?: Types.ObjectId | string; author?: Types.ObjectId | string; search?: string; contains?: string; after?: Date } = {}
 ): Promise<PostList> {
     await connectDB();
     const perPage = opts.perPage ?? SITE.postsPerPage;
@@ -214,6 +215,11 @@ export async function listPosts(
     // Page auteur : ses articles, et ceux où il signe un coup de cœur
     if (opts.author) extra.$or = [{ authors: opts.author }, { contributors: opts.author }];
     if (opts.search?.trim()) extra.$text = { $search: opts.search.trim() };
+    // Recherche « contient » (mots partiels, sans accents), sans index texte
+    if (opts.contains?.trim()) {
+        const re = containsRegex(opts.contains);
+        extra.$and = [{ $or: [{ title: re }, { excerpt: re }] }];
+    }
     if (opts.after) extra.publishedAt = { $gt: opts.after, $lte: new Date() };
     const filter = publishedFilter(extra);
     const [docs, total] = await Promise.all([

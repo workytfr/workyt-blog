@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
     const search = q.get("search")?.trim() || undefined;
     const after = q.get("after") ? new Date(q.get("after")!) : null;
 
-    const { items } = await listPosts({ perPage: limit, search, after: after && !isNaN(after.getTime()) ? after : undefined });
+    // « contient » plutôt que $text : workyt.fr cherche pendant la frappe (« appli »,
+    // « revision » sans accent), comme le faisait l'ancien WordPress
+    const { items } = await listPosts({ perPage: limit, contains: search, after: after && !isNaN(after.getTime()) ? after : undefined });
 
     return NextResponse.json({
         success: true,
