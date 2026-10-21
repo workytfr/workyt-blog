@@ -4,7 +4,10 @@ import mongoose from "mongoose";
 import { Eye } from "lucide-react";
 import { getBlogSession } from "@/lib/auth";
 import { can } from "@/lib/roles";
+import { connectDB } from "@/lib/db";
 import { getPostForPreview } from "@/lib/content";
+import { actorContext } from "@/lib/posts";
+import { canReview } from "@/lib/workflow";
 import { STATUS_LABELS } from "@/editor/types";
 import PostArticle from "@/components/PostArticle";
 import Post from "@/models/Post";
@@ -19,9 +22,15 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
     if (!session?.user) redirect(`/connexion/?callbackUrl=/apercu/${id}/`);
     if (!can(session.user.role, "dashboard.access")) notFound();
     if (!mongoose.isValidObjectId(id)) notFound();
+    // Comme dans l'éditeur : ses auteurs, son correcteur et la relecture, pas les brouillons des autres rédacteurs
+    await connectDB();
+    const meta = await Post.findById(id).select("status authors corrector").lean();
+    if (!meta) notFound();
+    const actor = { memberId: session.user.memberId, role: session.user.role, name: session.user.name || "" };
+    if (!canReview(await actorContext(actor, meta))) notFound();
     const post = await getPostForPreview(id);
     if (!post) notFound();
-    const status = (await Post.findById(id).select("status").lean())?.status || "draft";
+    const status = meta.status || "draft";
     const st = STATUS_LABELS[status] ?? STATUS_LABELS.draft;
 
     return (

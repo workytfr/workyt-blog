@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { myReaction, reactionCounts, setReaction } from "@/lib/comments";
 import { currentActor, errorResponse } from "@/lib/session";
+import { rateLimit, tooMany } from "@/lib/rateLimit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -33,10 +34,16 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 /** POST { type } — choisir sa réaction (null : la retirer) */
 export async function POST(req: Request, { params }: Ctx) {
+    if (!rateLimit(req, "reactions", 30, 10 * 60_000)) return tooMany();
     const body = await req.json().catch(() => ({}));
-    const v = await voter(true);
+    const type = body.type ?? null;
+    const v = await voter(type !== null);
+    // Retirer une réaction sans cookie : rien à retirer, rien à créer
+    if (!v.id) return NextResponse.json({ success: true, data: { counts: await reactionCounts((await params).id), mine: null } });
+    // Nouveau votant anonyme (sans cookie) : quelques-uns par IP et par heure, sinon on fabrique des votes à l'infini
+    if (v.fresh && !rateLimit(req, "reactions:new", 5, 60 * 60_000)) return tooMany();
     try {
-        const data = await setReaction((await params).id, v.id!, body.type ?? null);
+        const data = await setReaction((await params).id, v.id, type);
         const res = NextResponse.json({ success: true, data });
         if (v.fresh) res.cookies.set(COOKIE, v.fresh, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 365 * 2 });
         return res;

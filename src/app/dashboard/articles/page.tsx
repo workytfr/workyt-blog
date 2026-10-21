@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isCorrectionPlace } from "@/lib/correction";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { connectDB } from "@/lib/db";
 import { can } from "@/lib/roles";
 import { presenceByPost } from "@/lib/review";
@@ -13,14 +13,16 @@ import NewPostButton from "../NewPostButton";
 import ArticlesTable, { type ArticleRow } from "./ArticlesTable";
 
 type View = "afaire" | "miens" | "tous" | "corbeille";
-type Props = { searchParams: Promise<{ vue?: string; statut?: string; auteur?: string; rubrique?: string; seo?: string }> };
+type Props = { searchParams: Promise<{ vue?: string; statut?: string; auteur?: string; rubrique?: string; seo?: string; page?: string }> };
+
+const PER_PAGE = 100;
 
 /**
  * Liste des articles (§ 13) : ce qui m'attend, les miens, toute la rédaction,
  * la corbeille ; filtres statut, auteur, rubrique, score SEO ; actions groupées.
  */
 export default async function ArticlesPage({ searchParams }: Props) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     const sp = await searchParams;
     await connectDB();
     const me = await Member.findById(session.user.memberId).select("author").lean();
@@ -54,13 +56,28 @@ export default async function ArticlesPage({ searchParams }: Props) {
     if (cat) and.push({ categories: { $in: [cat._id, ...categories.filter((c) => String(c.parent) === String(cat._id)).map((c) => c._id)] } });
     if (sp.seo === "faible") and.push({ $or: [{ "seo.score": { $lt: 60 } }, { "seo.score": { $exists: false } }] });
 
-    const posts = await Post.find(and.length > 1 ? { $and: and } : filter)
-        .select("title slug status updatedAt publishedAt scheduledAt authors categories featuredImage corrector pendingSuggestions seo.score")
-        .sort({ updatedAt: -1 })
-        .limit(200)
-        .populate("authors", "name")
-        .populate("categories", "name color")
-        .lean();
+    // Pages de PER_PAGE articles (?page=2…), filtres gardés ; _id départage les dates égales (ordre stable)
+    const query = and.length > 1 ? { $and: and } : filter;
+    const page = Math.max(1, Math.floor(Number(sp.page)) || 1);
+    const [posts, total] = await Promise.all([
+        Post.find(query)
+            .select("title slug status updatedAt publishedAt scheduledAt authors categories featuredImage corrector pendingSuggestions seo.score")
+            .sort({ updatedAt: -1, _id: -1 })
+            .skip((page - 1) * PER_PAGE)
+            .limit(PER_PAGE)
+            .populate("authors", "name")
+            .populate("categories", "name color")
+            .lean(),
+        Post.countDocuments(query),
+    ]);
+    const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+    const pageHref = (n: number) => {
+        const q = new URLSearchParams();
+        for (const k of ["vue", "statut", "auteur", "rubrique", "seo"] as const) if (sp[k]) q.set(k, sp[k]!);
+        if (n > 1) q.set("page", String(n));
+        const s = q.toString();
+        return `/dashboard/articles/${s ? `?${s}` : ""}`;
+    };
     const presence = await presenceByPost(posts.map((p) => String(p._id)));
 
     /* eslint-disable @typescript-eslint/no-explicit-any -- champs peuplés */
@@ -148,6 +165,28 @@ export default async function ArticlesPage({ searchParams }: Props) {
                 </form>
 
                 <ArticlesTable rows={rows} view={view} canPurge={role === "admin"} canCarousel={can(role, "social.export")} empty={view === "afaire" && !filtered ? "Rien qui t'attend pour l'instant. 🎉" : view === "corbeille" ? "La corbeille est vide." : "Aucun article ne correspond."} />
+
+                {pages > 1 && (
+                    <nav className="mt-6 flex items-center justify-between gap-4 text-sm" aria-label="Pages de la liste">
+                        {page > 1 ? (
+                            <Link href={pageHref(Math.min(page - 1, pages))} className="btn-ghost px-4 py-2" rel="prev">
+                                ← Plus récents
+                            </Link>
+                        ) : (
+                            <span />
+                        )}
+                        <span className="text-ink/55">
+                            Page {Math.min(page, pages)} sur {pages} · {total.toLocaleString("fr-FR")} articles
+                        </span>
+                        {page < pages ? (
+                            <Link href={pageHref(page + 1)} className="btn-ghost px-4 py-2" rel="next">
+                                Plus anciens →
+                            </Link>
+                        ) : (
+                            <span />
+                        )}
+                    </nav>
+                )}
             </div>
         </main>
     );

@@ -58,7 +58,7 @@ export default function Reactions({ postId, initial }: { postId: string; initial
                 <h2 id="reactions-titre" className="font-display text-2xl">
                     Quelle est ta réaction ?
                 </h2>
-                <span className="text-xs text-ink/45">
+                <span className="text-xs text-ink/65">
                     {total} réaction{total > 1 ? "s" : ""}
                 </span>
             </div>
@@ -77,7 +77,7 @@ export default function Reactions({ postId, initial }: { postId: string; initial
                                 <ReactionIcon type={r.key} size={46} />
                             </span>
                             <span className="text-center text-[11.5px] font-semibold leading-tight">{r.label}</span>
-                            <span className={`text-sm font-bold ${on ? "text-accentdark" : "text-ink/55"}`}>{counts[r.key] ?? 0}</span>
+                            <span className={`text-sm font-bold ${on ? "text-accentdark" : "text-ink/65"}`}>{counts[r.key] ?? 0}</span>
                         </button>
                     );
                 })}

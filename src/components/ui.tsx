@@ -56,7 +56,7 @@ export function CreditBadge({ image, className = "" }: { image: ImageView; class
                 <Camera className="h-[11px] w-[11px]" />
             </span>
             {label}
-            {license && <span className="hidden font-medium text-ink/50 sm:inline">· {license}</span>}
+            {license && <span className="hidden font-medium text-ink/65 sm:inline">· {license}</span>}
         </>
     );
     return sourceUrl ? (

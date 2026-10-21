@@ -1,12 +1,16 @@
-import { renderOgCard, ogResponse } from "@/lib/og";
+import { cachedOgCard, defaultOgCard, isKnownOgCard, ogResponse } from "@/lib/og";
 
 /**
  * Carte de partage des pages sans photo : accueil, rubriques, étiquettes,
- * auteurs. /og/?titre=…&type=… (sans paramètre : la carte du blog).
+ * auteurs. /og/?titre=…&type=… (sans paramètre : la carte du blog). Seuls
+ * les titres des pages du blog sont dessinés (et gardés en mémoire) : un
+ * titre inventé reçoit la carte du blog, sans rien calculer.
  */
 export async function GET(req: Request) {
     const q = new URL(req.url).searchParams;
-    const title = (q.get("titre") || "Le blog de Workyt").slice(0, 140);
-    const kicker = (q.get("type") || (q.get("titre") ? "" : "Actualités · Conseils · Culture")).slice(0, 40);
-    return ogResponse(await renderOgCard({ title, kicker: kicker || undefined }));
+    const title = q.get("titre") || "";
+    const kicker = q.get("type") || "";
+    if (!title || !(await isKnownOgCard(title, kicker))) return ogResponse(await defaultOgCard());
+    const jpg = await cachedOgCard(`page:${title}\n${kicker}`, async () => ({ title, kicker: kicker || undefined }));
+    return ogResponse(jpg ?? (await defaultOgCard()));
 }

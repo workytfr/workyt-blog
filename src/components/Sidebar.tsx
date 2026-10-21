@@ -11,7 +11,7 @@ export default async function Sidebar() {
             <div className="widget">
                 {/* eslint-disable-next-line @next/next/no-img-element -- logo SVG, déjà léger */}
                 <img src="/logo-blog-workyt.svg" alt="Le blog de Workyt" width={2485} height={549} className="h-12 w-auto" />
-                <div className="mt-2 text-xs text-ink/55">Association · éducation gratuite</div>
+                <div className="mt-2 text-xs text-ink/65">Association · éducation gratuite</div>
                 <p className="mt-3 text-sm leading-relaxed text-ink/65">{SITE.description}</p>
                 <a href={SITE.workytUrl} className="btn-ink mt-4 w-full justify-center py-2.5 text-sm">
                     Découvrir Workyt

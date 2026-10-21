@@ -1,49 +1,41 @@
 import { notFound } from "next/navigation";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { connectDB } from "@/lib/db";
 import Post from "@/models/Post";
 import "@/models/Category";
 import CalendarView, { type CalItem } from "./CalendarView";
+import { addDays, daysInMonth, mondayOf, parisMidnight, parisMonth } from "@/lib/parisTime";
 
 type Props = { searchParams: Promise<{ mois?: string; semaine?: string }> };
-
-/** Lundi de la semaine d'une date (heure locale) */
-function monday(d: Date) {
-    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-    return x;
-}
 
 /**
  * Calendrier éditorial (§ 7.3, § 13) : articles planifiés et publiés, vue mois
  * ou semaine ; glisser un article planifié sur un autre jour le reprogramme.
  */
 export default async function CalendarPage({ searchParams }: Props) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "calendar.view")) notFound();
     const sp = await searchParams;
-    const now = new Date();
-    let start: Date;
-    let end: Date;
+    // Bornes à minuit, heure de Paris (le serveur tourne en UTC)
+    let first: string;
+    let last: string;
     let mode: "mois" | "semaine";
     let anchor: string;
     if (sp.semaine && /^\d{4}-\d{2}-\d{2}$/.test(sp.semaine)) {
         mode = "semaine";
-        start = monday(new Date(`${sp.semaine}T12:00:00`));
-        end = new Date(start);
-        end.setDate(end.getDate() + 7);
+        first = mondayOf(sp.semaine);
+        last = first;
         anchor = sp.semaine;
     } else {
         mode = "mois";
-        const [y, m] = /^\d{4}-\d{2}$/.test(sp.mois ?? "") ? sp.mois!.split("-").map(Number) : [now.getFullYear(), now.getMonth() + 1];
-        const first = new Date(y, m - 1, 1);
-        start = monday(first);
-        const last = new Date(y, m, 0);
-        end = monday(last);
-        end.setDate(end.getDate() + 7);
-        anchor = `${y}-${String(m).padStart(2, "0")}`;
+        anchor = /^\d{4}-\d{2}$/.test(sp.mois ?? "") ? sp.mois! : parisMonth();
+        first = mondayOf(`${anchor}-01`);
+        last = mondayOf(`${anchor}-${String(daysInMonth(anchor)).padStart(2, "0")}`);
     }
+    // Jusqu'au dimanche soir de la dernière semaine
+    const start = parisMidnight(first);
+    const end = parisMidnight(addDays(last, 7));
 
     await connectDB();
     const posts = await Post.find({

@@ -31,7 +31,7 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
 
     return (
         <button type="button" onClick={toggle} className={className} aria-label={dark ? "Passer en mode clair" : "Passer en mode sombre"} title={dark ? "Mode clair" : "Mode sombre"}>
-            {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+            {dark ? <Sun className="h-[18px] w-[18px]" aria-hidden /> : <Moon className="h-[18px] w-[18px]" aria-hidden />}
         </button>
     );
 }

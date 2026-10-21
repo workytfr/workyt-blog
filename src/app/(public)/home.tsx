@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { Mail } from "lucide-react";
 import {
   categoriesWithCounts,
-  childCategoryIds,
   listPosts,
   menuCategories,
   mostReadPosts,
 } from "@/lib/content";
 import { archiveMetadata, homeJsonLd, jsonLdString } from "@/lib/seo";
 import { SITE } from "@/lib/site";
+import { getSettings } from "@/lib/settings";
 import Archive from "@/components/Archive";
 import Bento, { CategoriesCorner, OlderCorner } from "@/components/home/Bento";
 import TopPosts from "@/components/home/TopPosts";
@@ -40,23 +40,28 @@ export async function OlderPosts({ page }: { page: number }) {
 
 export default async function Home() {
   // 12 articles : 6 dans la grille du haut, 6 dans « Derniers articles » (la même grille, en miroir)
-  const [latest, top, cats, menu] = await Promise.all([
+  const [latest, top, cats, menu, settings] = await Promise.all([
     listPosts({ page: 1 }),
     mostReadPosts(5),
     categoriesWithCounts(),
     menuCategories(),
+    getSettings(),
   ]);
   const bento = latest.items.slice(0, 6);
   const recent = latest.items.slice(6);
   const hasOlder = latest.total > SITE.postsPerPage;
 
-  // Une section par rubrique (sous-rubriques comprises), dans l'ordre du menu
+  // Une section par rubrique (sous-rubriques comprises), dans l'ordre du menu ;
+  // sous-rubriques déjà connues, total déjà compté : une seule requête par section
   const sections = await Promise.all(
     cats
       .filter((c) => c.count > 0)
       .map(async (c) => {
-        const ids = [c.id, ...(await childCategoryIds(c.id))];
-        const { items } = await listPosts({ perPage: 4, categoryIds: ids });
+        const { items } = await listPosts({
+          perPage: 4,
+          categoryIds: [c.id, ...c.childIds],
+          withTotal: false,
+        });
         return {
           category: c,
           posts: items,
@@ -72,11 +77,11 @@ export default async function Home() {
       <h1 className="sr-only">Le blog de Workyt</h1>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdString(homeJsonLd()) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(homeJsonLd(settings.social)) }}
       />
 
       {latest.items.length === 0 ? (
-        <p className="mt-10 rounded-[28px] border border-dashed border-ink/15 bg-white p-12 text-center text-ink/60">
+        <p className="mt-10 rounded-[28px] border border-dashed border-ink/15 bg-white p-12 text-center text-ink/65">
           Aucun article pour l&apos;instant.
         </p>
       ) : (
@@ -136,18 +141,18 @@ export default async function Home() {
       )}
 
       {/* Newsletter de Workyt */}
-      <section className="relative mt-20 overflow-hidden rounded-[36px] bg-accent p-8 text-white sm:p-12">
+      <section className="relative mt-20 overflow-hidden rounded-[36px] bg-accentdark p-8 text-white sm:p-12">
         <div
           className="absolute -right-16 -top-20 h-72 w-72 rounded-full bg-sun/40 blur-2xl"
           aria-hidden
         />
         <div className="relative flex flex-wrap items-center justify-between gap-6">
           <div className="max-w-xl">
-            <p className="eyebrow !text-white/70">Chaque mercredi</p>
+            <p className="eyebrow !text-white">Chaque mercredi</p>
             <h2 className="mt-2 font-display text-[34px] leading-tight sm:text-[42px]">
               Le récap du blog et de Workyt dans ta boîte mail
             </h2>
-            <p className="mt-2 text-white/80">
+            <p className="mt-2 text-white">
               Nouveaux articles, cours et fiches de la semaine. Gratuit, sans
               pub.
             </p>

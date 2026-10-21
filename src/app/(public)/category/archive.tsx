@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { childCategoryIds, getCategoryBySlug, listPosts } from "@/lib/content";
 import { archiveMetadata, categoryJsonLd, jsonLdString } from "@/lib/seo";
 import Archive from "@/components/Archive";
+import { decodeSlug } from "@/lib/slug";
 
 /** Rubrique : /category/<slug>/ et /category/<slug>/page/<n>/ (articles des sous-rubriques compris) */
 export async function categoryMetadata(slug: string, page: number): Promise<Metadata> {
-    const cat = await getCategoryBySlug(decodeURIComponent(slug));
+    const cat = await getCategoryBySlug(decodeSlug(slug));
     if (!cat) return { title: "Rubrique introuvable", robots: { index: false } };
     return archiveMetadata({
         title: cat.seo.title || cat.name,
@@ -19,7 +20,7 @@ export async function categoryMetadata(slug: string, page: number): Promise<Meta
 }
 
 export default async function CategoryArchive({ slug, page }: { slug: string; page: number }) {
-    const cat = await getCategoryBySlug(decodeURIComponent(slug));
+    const cat = await getCategoryBySlug(decodeSlug(slug));
     if (!cat) notFound();
     const ids = [cat.id, ...(await childCategoryIds(cat.id))];
     const list = await listPosts({ page, categoryIds: ids });

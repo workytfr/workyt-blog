@@ -34,19 +34,24 @@ export default function ShareBar({ url, title, image }: { url: string; title: st
     };
 
     return (
-        <div className="flex flex-row items-center gap-2 lg:sticky lg:top-28 lg:flex-col" aria-label="Partager l'article">
-            <span className="hidden rotate-180 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink/40 [writing-mode:vertical-rl] lg:mb-1 lg:block">Partager</span>
+        <div className="flex flex-row items-center gap-2 lg:sticky lg:top-28 lg:flex-col" role="group" aria-label="Partager l'article">
+            <span className="hidden rotate-180 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink/65 [writing-mode:vertical-rl] lg:mb-1 lg:block">Partager</span>
             {networks.map((n) => (
-                <a key={n.name} href={n.href} target="_blank" rel="noopener noreferrer" className={btn} title={`Partager sur ${n.name}`}>
-                    <BrandIcon path={n.icon.path} color={`#${n.name === "X" ? "000000" : n.icon.hex}`} title={n.name} />
+                // Nom porté par aria-label (un title seul n'est pas fiable) ; X suit le thème (noir illisible en sombre)
+                <a key={n.name} href={n.href} target="_blank" rel="noopener noreferrer" className={btn} title={`Partager sur ${n.name}`} aria-label={`Partager sur ${n.name}`}>
+                    <BrandIcon path={n.icon.path} color={n.name === "X" ? "currentColor" : `#${n.icon.hex}`} title={n.name} />
                 </a>
             ))}
-            <a href={`mailto:?subject=${t}&body=${u}`} className={btn} title="Envoyer par e-mail">
-                <Mail className="h-[17px] w-[17px]" />
+            <a href={`mailto:?subject=${t}&body=${u}`} className={btn} title="Envoyer par e-mail" aria-label="Envoyer par e-mail">
+                <Mail className="h-[17px] w-[17px]" aria-hidden />
             </a>
-            <button type="button" onClick={copy} className={btn} title="Copier le lien">
-                {copied ? <Check className="h-[17px] w-[17px] text-[#3f8a1f]" /> : <Link2 className="h-[17px] w-[17px]" />}
+            <button type="button" onClick={copy} className={btn} title="Copier le lien" aria-label="Copier le lien">
+                {copied ? <Check className="h-[17px] w-[17px] text-[#3f8a1f]" aria-hidden /> : <Link2 className="h-[17px] w-[17px]" aria-hidden />}
             </button>
+            {/* Confirmation annoncée aux lecteurs d'écran */}
+            <span className="sr-only" role="status" aria-live="polite">
+                {copied ? "Lien copié" : ""}
+            </span>
         </div>
     );
 }

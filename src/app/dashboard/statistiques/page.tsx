@@ -1,30 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, Eye, FileText, MousePointerClick, TrendingUp } from "lucide-react";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { connectDB } from "@/lib/db";
 import Post from "@/models/Post";
 import Category from "@/models/Category";
 import ViewDay from "@/models/ViewDay";
 import AffiliateLink from "@/models/AffiliateLink";
+import { addDays, daySeries, parisDay, parisMidnight } from "@/lib/parisTime";
 
 type Props = { searchParams: Promise<{ periode?: string }> };
 
-const parisDay = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
-/** Il y a n jours (début de la période affichée) */
-const daysAgo = (n: number) => new Date(new Date().getTime() - n * 86_400_000);
-
 /** Statistiques (§ 13) : lectures (compteur interne), articles les plus lus, rubriques, clics affiliés ; lien vers Umami */
 export default async function StatsPage({ searchParams }: Props) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "stats.view")) notFound();
     const { periode } = await searchParams;
     const days = periode === "90" ? 90 : periode === "7" ? 7 : 30;
     await connectDB();
 
-    const since = daysAgo(days - 1);
-    const sinceKey = parisDay(since);
+    // Période en jours du calendrier de Paris : aujourd'hui compris
+    const sinceKey = addDays(parisDay(), -(days - 1));
+    const since = parisMidnight(sinceKey);
     const [totals, daily, topPeriod, topAll, byCat, cats, links, publishedPeriod] = await Promise.all([
         Post.aggregate<{ n: number; v: number }>([{ $match: { status: "published" } }, { $group: { _id: null, n: { $sum: 1 }, v: { $sum: "$views" } } }]).then((r) => r[0] ?? { n: 0, v: 0 }),
         ViewDay.aggregate<{ _id: string; v: number }>([{ $match: { day: { $gte: sinceKey } } }, { $group: { _id: "$day", v: { $sum: "$views" } } }]),
@@ -40,10 +38,7 @@ export default async function StatsPage({ searchParams }: Props) {
     const catById = new Map(cats.map((c) => [String(c._id), c]));
 
     // Courbe : un point par jour, y compris les jours sans lecture
-    const series = Array.from({ length: days }, (_, i) => {
-        const key = parisDay(new Date(since.getTime() + i * 86_400_000));
-        return { key, v: daily.find((d) => d._id === key)?.v ?? 0 };
-    });
+    const series = daySeries(sinceKey, days).map((key) => ({ key, v: daily.find((d) => d._id === key)?.v ?? 0 }));
     const periodViews = series.reduce((s, d) => s + d.v, 0);
     const max = Math.max(1, ...series.map((d) => d.v));
     const clicks = links.reduce((s, l) => s + (l.clicks || 0), 0);

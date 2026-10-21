@@ -164,6 +164,39 @@ const POPULATE_CARD = [
     { path: "authors", select: "slug name title bio avatarUrl workytId" },
 ];
 
+/* ─── Cache mémoire ─── */
+
+type Memo = { at: number; value?: unknown; loading: Promise<unknown> | null };
+const memoState = globalThis as unknown as { __blogMemo?: Map<string, Memo> };
+memoState.__blogMemo ??= new Map();
+const memos = memoState.__blogMemo;
+
+/**
+ * Résultat gardé en mémoire `ttlMs` (comme lib/redirects) : un seul calcul
+ * en vol par clé ; une fois périmé, l'ancien résultat est servi pendant le
+ * recalcul. Les clés doivent rester en nombre borné (pas de saisie libre).
+ */
+export function memoized<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
+    let entry = memos.get(key);
+    if (!entry) memos.set(key, (entry = { at: 0, loading: null }));
+    const m = entry;
+    if (Date.now() - m.at > ttlMs) {
+        m.loading ??= load()
+            .then((value) => {
+                m.value = value;
+                m.at = Date.now();
+                return value;
+            })
+            .finally(() => {
+                m.loading = null;
+            });
+        // Premier calcul : on attend (et l'erreur remonte) ; ensuite on sert l'ancien résultat
+        if (m.at === 0) return m.loading as Promise<T>;
+        m.loading.catch((error) => console.error(`[cache] ${key} : recalcul impossible :`, error));
+    }
+    return Promise.resolve(m.value as T);
+}
+
 /* ─── Articles ─── */
 
 export const getPostBySlug = cache(async (slug: string): Promise<PostView | null> => {
@@ -224,7 +257,19 @@ export interface PostList {
 }
 
 export async function listPosts(
-    opts: { page?: number; perPage?: number; category?: Types.ObjectId | string; categoryIds?: (Types.ObjectId | string)[]; tag?: Types.ObjectId | string; author?: Types.ObjectId | string; search?: string; contains?: string; after?: Date } = {}
+    opts: {
+        page?: number;
+        perPage?: number;
+        category?: Types.ObjectId | string;
+        categoryIds?: (Types.ObjectId | string)[];
+        tag?: Types.ObjectId | string;
+        author?: Types.ObjectId | string;
+        search?: string;
+        contains?: string;
+        after?: Date;
+        /** false : pas de comptage (total = nombre d'articles renvoyés, une seule page) */
+        withTotal?: boolean;
+    } = {}
 ): Promise<PostList> {
     await connectDB();
     const perPage = opts.perPage ?? SITE.postsPerPage;
@@ -245,15 +290,19 @@ export async function listPosts(
     const filter = publishedFilter(extra);
     const [docs, total] = await Promise.all([
         Post.find(filter).select(CARD_FIELDS).sort({ publishedAt: -1 }).skip((page - 1) * perPage).limit(perPage).populate(POPULATE_CARD).lean(),
-        Post.countDocuments(filter),
+        opts.withTotal === false ? Promise.resolve(-1) : Post.countDocuments(filter),
     ]);
+    if (total < 0) return { items: docs.map(toCard), total: docs.length, page, pages: 1 };
     return { items: docs.map(toCard), total, page, pages: Math.max(1, Math.ceil(total / perPage)) };
 }
 
-export async function mostReadPosts(limit = 3): Promise<PostCardView[]> {
-    await connectDB();
-    const docs = await Post.find(publishedFilter()).select(CARD_FIELDS).sort({ views: -1 }).limit(limit).populate(POPULATE_CARD).lean();
-    return docs.map(toCard);
+/** Les plus lus (accueil, colonne) : gardés 5 min en mémoire, les vues bougent sans cesse */
+export function mostReadPosts(limit = 3): Promise<PostCardView[]> {
+    return memoized(`mostRead:${limit}`, 5 * 60_000, async () => {
+        await connectDB();
+        const docs = await Post.find(publishedFilter()).select(CARD_FIELDS).sort({ views: -1 }).limit(limit).populate(POPULATE_CARD).lean();
+        return docs.map(toCard);
+    });
 }
 
 /** Articles de la même rubrique, les plus récents d'abord */
@@ -360,19 +409,25 @@ export const menuCategories = cache(async (): Promise<MenuCategory[]> => {
     }
 });
 
-/** Rubriques de premier niveau et leur nombre d'articles publiés (sous-rubriques comprises) */
-export async function categoriesWithCounts(): Promise<(CategoryView & { count: number })[]> {
-    await connectDB();
-    const [cats, counts] = await Promise.all([
-        Category.find({}).sort({ order: 1, name: 1 }).lean(),
-        Post.aggregate<{ _id: Types.ObjectId; n: number }>([{ $match: publishedFilter() }, { $unwind: "$categories" }, { $group: { _id: "$categories", n: { $sum: 1 } } }]),
-    ]);
-    const byId = new Map(counts.map((c) => [id(c._id), c.n]));
-    const views = cats.map(toCategory);
-    return views
-        .filter((c) => !c.parentId)
-        .map((c) => ({
-            ...c,
-            count: (byId.get(c.id) || 0) + views.filter((k) => k.parentId === c.id).reduce((s, k) => s + (byId.get(k.id) || 0), 0),
-        }));
+/**
+ * Rubriques de premier niveau, leur nombre d'articles publiés (sous-rubriques
+ * comprises) et les identifiants de leurs sous-rubriques. Gardées 5 min en
+ * mémoire : chaque page d'article (colonne) et l'accueil s'en servent.
+ */
+export function categoriesWithCounts(): Promise<(CategoryView & { count: number; childIds: string[] })[]> {
+    return memoized("categoriesWithCounts", 5 * 60_000, async () => {
+        await connectDB();
+        const [cats, counts] = await Promise.all([
+            Category.find({}).sort({ order: 1, name: 1 }).lean(),
+            Post.aggregate<{ _id: Types.ObjectId; n: number }>([{ $match: publishedFilter() }, { $unwind: "$categories" }, { $group: { _id: "$categories", n: { $sum: 1 } } }]),
+        ]);
+        const byId = new Map(counts.map((c) => [id(c._id), c.n]));
+        const views = cats.map(toCategory);
+        return views
+            .filter((c) => !c.parentId)
+            .map((c) => {
+                const childIds = views.filter((k) => k.parentId === c.id).map((k) => k.id);
+                return { ...c, childIds, count: (byId.get(c.id) || 0) + childIds.reduce((s, k) => s + (byId.get(k) || 0), 0) };
+            });
+    });
 }

@@ -31,6 +31,9 @@ const AuthorSchema = new Schema(
     { timestamps: true }
 );
 
+// Profil d'un membre (rédacteurs invités, suivi de rédaction)
+AuthorSchema.index({ member: 1 });
+
 export type AuthorDoc = InferSchemaType<typeof AuthorSchema> & { _id: mongoose.Types.ObjectId };
 
 const Author: Model<AuthorDoc> = (mongoose.models.Author as Model<AuthorDoc>) || mongoose.model<AuthorDoc>("Author", AuthorSchema);

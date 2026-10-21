@@ -18,10 +18,11 @@ export default function Pagination({ base, page, pages, query = "" }: { base: st
             )}
             {around.map((n, i) => (
                 <span key={n} className="flex items-center">
-                    {i > 0 && n - around[i - 1] > 1 && <span className="px-1 text-ink/40">…</span>}
+                    {i > 0 && n - around[i - 1] > 1 && <span className="px-1 text-ink/65" aria-hidden>…</span>}
                     <Link
                         href={href(n)}
                         aria-current={n === page ? "page" : undefined}
+                        aria-label={`Page ${n}`}
                         className={`grid h-10 min-w-10 place-items-center rounded-full px-3 text-sm font-semibold ${n === page ? "bg-ink text-white" : "hover:bg-paper2"}`}
                     >
                         {n}

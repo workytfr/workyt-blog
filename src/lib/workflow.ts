@@ -107,6 +107,8 @@ export function nextStatus(action: WorkflowAction, c: WorkflowContext, opts: { r
     if ((action === "approve" || action === "publish") && opts.at) {
         const now = opts.now ?? new Date();
         if (opts.at.getTime() > now.getTime() + 60_000) return "scheduled";
+        // Une date passée n'est pas « tout de suite » sans le dire : à une minute près (horloges), on refuse
+        if (opts.at.getTime() < now.getTime() - 60_000) throw new WorkflowError("Cette date est déjà passée : choisis une date à venir, ou publie tout de suite.", 422);
     }
     return rule.to;
 }

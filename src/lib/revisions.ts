@@ -12,6 +12,7 @@ interface Snapshotable {
     excerpt?: string | null;
     contentJson?: unknown;
     status?: string | null;
+    modules?: unknown;
 }
 
 /**
@@ -30,6 +31,8 @@ export async function saveRevision(post: Snapshotable, kind: RevisionKind, label
         title: post.title,
         excerpt: post.excerpt ?? "",
         ...(same ? { sameAs: same._id } : { contentJson: post.contentJson }),
+        // Toujours recopiés (l'empreinte ne couvre que le titre et le texte) : restaurés avec la version
+        ...(Array.isArray(post.modules) ? { modules: [...post.modules] } : {}),
         hash,
         status: post.status,
         label,

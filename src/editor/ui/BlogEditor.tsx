@@ -148,6 +148,14 @@ export default function BlogEditor({
     const dirtyFields = useRef<Set<string>>(new Set());
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const saveRef = useRef<() => Promise<boolean>>(async () => true);
+    // Un seul enregistrement à la fois : deux PATCH simultanés pouvaient arriver dans le désordre
+    // (l'ancien texte écrasait le nouveau). Chaque appel attend le précédent, puis envoie ce qui reste à jour.
+    const saveChain = useRef<Promise<unknown>>(Promise.resolve());
+    const saveNow = useCallback((): Promise<boolean> => {
+        const run = saveChain.current.then(() => saveRef.current());
+        saveChain.current = run.catch(() => false);
+        return run;
+    }, []);
     const active = useRef(false);
     const loadedAt = useRef(new Date(post.updatedAt).getTime());
     const statusRef = useRef(post.status);
@@ -248,8 +256,8 @@ export default function BlogEditor({
         active.current = true;
         setSave("dirty");
         if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => void saveRef.current(), 1500);
-    }, []);
+        timer.current = setTimeout(() => void saveNow(), 1500);
+    }, [saveNow]);
 
     // Enregistrement : on n'envoie que ce qui a changé (fonction tenue à jour après chaque rendu)
     useLayoutEffect(() => {
@@ -359,7 +367,7 @@ export default function BlogEditor({
         const onKey = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "s") {
                 e.preventDefault();
-                void saveRef.current();
+                void saveNow();
             }
         };
         const onLeave = (e: BeforeUnloadEvent) => {
@@ -371,7 +379,7 @@ export default function BlogEditor({
             window.removeEventListener("keydown", onKey);
             window.removeEventListener("beforeunload", onLeave);
         };
-    }, []);
+    }, [saveNow]);
 
     // Le menu « / » demande une image : on ouvre la médiathèque
     useEffect(() => {
@@ -421,7 +429,7 @@ export default function BlogEditor({
         setBusy(true);
         setIssues([]);
         try {
-            if (!(await saveRef.current())) return false;
+            if (!(await saveNow())) return false;
             const j = await fetch(`/api/posts/${post.id}/workflow/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...opts }) }).then((r) => r.json());
             if (!j.success) {
                 setIssues(j.issues?.length ? j.issues : [j.error]);
@@ -644,7 +652,7 @@ Le texte, les versions, les commentaires et les réactions seront effacés. C'es
                         <button
                             type="button"
                             onClick={async () => {
-                                await saveRef.current();
+                                await saveNow();
                                 setLock((l) => ({ ...l, mine: false, requestedBy: null }));
                                 await beat({ yield: true });
                             }}

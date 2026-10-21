@@ -38,7 +38,7 @@ export default function CategorySection({
         <article key="lead" className={`group relative min-h-[320px] overflow-hidden rounded-[30px] bg-paper2 ${leadSpan}`}>
             {lead.featuredImage && <Image src={lead.featuredImage.url} alt={lead.featuredImage.alt} fill sizes="(min-width: 1536px) 660px, (min-width: 1024px) 520px, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />}
             <div className="notch-bl max-w-[86%] px-5 pb-1 pt-4">
-                <p className="text-[11.5px] text-ink/55">
+                <p className="text-[11.5px] text-ink/65">
                     <time dateTime={lead.publishedAt}>{short(lead.publishedAt)}</time> · {lead.readingMinutes} min de lecture
                 </p>
                 <h3 className="mt-1.5 font-display text-[22px] leading-[1.1] sm:text-[24px]">
@@ -53,7 +53,7 @@ export default function CategorySection({
     const nextCard = next && (
         <article key="next" className="relative flex flex-col overflow-hidden rounded-[30px] lg:col-span-4" style={{ background: tint(category.color, "2e", "#ffe3cf") }}>
             <div className="relative flex-1 p-6 pr-16">
-                <p className="text-[11.5px] text-ink/55">
+                <p className="text-[11.5px] text-ink/65">
                     <time dateTime={next.publishedAt}>{short(next.publishedAt)}</time> · {next.readingMinutes} min de lecture
                 </p>
                 <h3 className="mt-2.5 font-display text-[22px] leading-[1.1]">
@@ -86,7 +86,7 @@ export default function CategorySection({
     const categoryCard = (
         <div key="category" className="relative order-first flex flex-col overflow-hidden rounded-[30px] p-5 lg:order-none lg:col-span-3" style={{ background: tint(category.color, "52", "#fff1d6") }}>
             <span className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/25" aria-hidden />
-            <p className="relative text-[11px] font-bold uppercase tracking-[0.14em] text-ink/55">
+            <p className="relative text-[11px] font-bold uppercase tracking-[0.14em] text-ink/65">
                 {count} article{count > 1 ? "s" : ""}
             </p>
             <h3 className="relative mt-1 font-display text-[30px] leading-none">{category.name}</h3>

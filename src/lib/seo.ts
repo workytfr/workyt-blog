@@ -9,6 +9,19 @@ import { citationJsonLd, moduleJsonLd } from "./modules/jsonld";
  * description SEO), schéma `Article`, fil d'Ariane, éditeur Workyt.
  */
 
+/**
+ * Flux RSS annoncés dans <head>. Next fusionne `alternates` en entier : sans
+ * les reprendre ici, le canonical des pages effaçait celui du layout.
+ */
+function feeds(category?: { path: string; name: string }) {
+    return {
+        "application/rss+xml": [
+            { url: absoluteUrl("/feed/"), title: SITE.name },
+            ...(category ? [{ url: absoluteUrl(`${category.path}feed/`), title: `${SITE.name} - ${category.name}` }] : []),
+        ],
+    };
+}
+
 export function postMetadata(post: PostView): Metadata {
     const title = pageTitle(post.seo.title || post.title);
     const description = post.seo.description || post.excerpt;
@@ -18,7 +31,7 @@ export function postMetadata(post: PostView): Metadata {
     return {
         title: { absolute: title },
         description,
-        alternates: { canonical: url },
+        alternates: { canonical: url, types: feeds() },
         robots: { index: !post.seo.noindex, follow: !post.seo.nofollow, "max-image-preview": "large" },
         openGraph: {
             type: "article",
@@ -52,7 +65,7 @@ export function archiveMetadata(opts: { title: string; description?: string; pat
     return {
         title: { absolute: titled(`${opts.title}${paged}`) },
         description: opts.description,
-        alternates: { canonical: absoluteUrl(path) },
+        alternates: { canonical: absoluteUrl(path), types: feeds(opts.path.startsWith("/category/") ? { path: opts.path, name: opts.title } : undefined) },
         robots: opts.noindex ? { index: false, follow: true } : undefined,
         openGraph: { type: "website", url: absoluteUrl(path), title: titled(opts.title), description: opts.description, siteName: SITE.name, locale: SITE.locale, images: [ogCard(opts.card)] },
         twitter: { card: "summary_large_image", title: titled(opts.title), description: opts.description, images: [ogCard(opts.card).url] },
@@ -61,13 +74,21 @@ export function archiveMetadata(opts: { title: string; description?: string; pat
 
 /* ─── JSON-LD ─── */
 
-const ORGANIZATION = {
-    "@type": "Organization",
-    "@id": `${SITE.url}/#organization`,
-    name: SITE.name,
-    url: SITE.workytUrl,
-    logo: { "@type": "ImageObject", url: `${SITE.url}/logo-workyt.png` },
-};
+/** Réseaux sociaux (réglages du dashboard) : adresses renseignées seulement */
+export type SocialLinks = Partial<Record<string, string>>;
+
+/** L'association, avec ses réseaux en `sameAs` (ceux de SITE.social si l'appelant ne passe pas les réglages) */
+function organization(social: SocialLinks = SITE.social) {
+    const sameAs = Object.values(social).filter((u): u is string => !!u && /^https?:\/\//.test(u));
+    return {
+        "@type": "Organization",
+        "@id": `${SITE.url}/#organization`,
+        name: SITE.name,
+        url: SITE.workytUrl,
+        logo: { "@type": "ImageObject", url: `${SITE.url}/logo-workyt.png` },
+        ...(sameAs.length ? { sameAs } : {}),
+    };
+}
 
 const WEBSITE = {
     "@type": "WebSite",
@@ -80,11 +101,11 @@ const WEBSITE = {
 };
 
 /** Accueil : le site, l'association et la page elle-même (Rank Math en mettait autant) */
-export function homeJsonLd() {
+export function homeJsonLd(social?: SocialLinks) {
     return {
         "@context": "https://schema.org",
         "@graph": [
-            ORGANIZATION,
+            organization(social),
             WEBSITE,
             {
                 "@type": "CollectionPage",
@@ -110,7 +131,7 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
 /** Commentaire repris dans le balisage (§ 11) */
 export type JsonLdComment = { name: string; text: string; createdAt: string; status: string; parentId: string | null };
 
-export function postJsonLd(post: PostView, comments: JsonLdComment[] = []) {
+export function postJsonLd(post: PostView, comments: JsonLdComment[] = [], social?: SocialLinks) {
     const published = comments.filter((c) => c.status === "published");
     const url = absoluteUrl(`/${post.slug}/`);
     // Modules : Recipe, Product + Review, Review + Book… ; sources en « citation » de l'Article
@@ -129,7 +150,7 @@ export function postJsonLd(post: PostView, comments: JsonLdComment[] = []) {
     return {
         "@context": "https://schema.org",
         "@graph": [
-            ORGANIZATION,
+            organization(social),
             WEBSITE,
             breadcrumbJsonLd(crumbs),
             {
@@ -139,7 +160,8 @@ export function postJsonLd(post: PostView, comments: JsonLdComment[] = []) {
                 description: post.seo.description || post.excerpt,
                 datePublished: post.publishedAt,
                 dateModified: post.modifiedAt,
-                mainEntityOfPage: url,
+                // Même adresse que la balise canonical
+                mainEntityOfPage: post.seo.canonical || url,
                 articleSection: post.primaryCategory?.name,
                 keywords: post.tags.map((t) => t.name).join(", ") || undefined,
                 inLanguage: "fr-FR",

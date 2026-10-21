@@ -3,6 +3,7 @@ import { LEGAL_LINKS, WORKYT_LINKS } from "@/lib/site";
 import { menuCategories } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
 import { BlogLogo } from "./SiteHeader";
+import { ConsentSettingsButton } from "./ReplayConsent";
 
 /** Pied de page propre au blog ; les pages légales renvoient vers workyt.fr */
 export default async function SiteFooter() {
@@ -53,10 +54,15 @@ export default async function SiteFooter() {
                                 Flux RSS
                             </Link>
                         </li>
+                        {process.env.NEXT_PUBLIC_UMAMI_URL && (
+                            <li>
+                                <ConsentSettingsButton className="hover:text-white" />
+                            </li>
+                        )}
                     </ul>
                 </div>
             </div>
-            <div className="border-t border-white/10 py-5 text-center text-xs text-white/45">© {new Date().getFullYear()} Workyt · association loi 1901</div>
+            <div className="border-t border-white/10 py-5 text-center text-xs text-white/60">© {new Date().getFullYear()} Workyt · association loi 1901</div>
         </footer>
     );
 }

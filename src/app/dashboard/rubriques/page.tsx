@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { listCategories, listTags } from "@/lib/taxonomy";
 import TaxonomyManager from "./TaxonomyManager";
 
 /** Rubriques (arbre) et étiquettes (§ 13) */
 export default async function TaxonomyPage() {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "taxonomy.manage")) notFound();
     const [categories, tags] = await Promise.all([listCategories(), listTags()]);
     return (

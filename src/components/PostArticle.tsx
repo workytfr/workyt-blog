@@ -1,3 +1,5 @@
+// Formules LaTeX : styles KaTeX chargés par les pages d'article seulement (plus sur tout le site)
+import "katex/dist/katex.min.css";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Calendar, ChevronRight, Clock, MessageCircle } from "lucide-react";
@@ -10,6 +12,7 @@ import { ProductComparison } from "@/components/modules/Reviews";
 import { postJsonLd, jsonLdString } from "@/lib/seo";
 import { absoluteUrl, SITE } from "@/lib/site";
 import { formatDate } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import { Avatar, CategoryPill, CreditBadge } from "@/components/ui";
 import ShareBar from "@/components/ShareBar";
 import Sidebar from "@/components/Sidebar";
@@ -43,12 +46,14 @@ export default async function PostArticle({
     const url = absoluteUrl(`/${post.slug}/`);
     // Commentaires publiés et réactions : dans la page (référencement) ; l'aperçu de la rédaction n'en a pas
     const [comments, reactions] = preview ? [[], {}] : await Promise.all([listComments(post.id), reactionCounts(post.id)]);
+    // Réseaux de l'association (réglages) : `sameAs` du JSON-LD
+    const social = preview ? undefined : (await getSettings()).social;
     const img = post.featuredImage;
 
     // Modules (lot 4) : ceux placés dans le texte s'y affichent, les autres à la fin ; les sources en dernier
     const sources = post.modules.flatMap((m) => (m.type === "sources" ? m.data.items : []));
     // Sommaire : carte avant le premier titre, et version collante dans la colonne
-    const { html, toc } = renderArticle(post.contentHtml, { linkIcons: true, sourceIds: sources.map((s) => s.id), affiliates: post.affiliates, featuredUrl: img?.url });
+    const { html, toc } = renderArticle(post.contentHtml, { linkIcons: true, sourceIds: sources.map((s) => s.id), affiliates: post.affiliates, featuredUrl: img?.url, responsiveImages: true });
     const parts = splitAtModules(html);
     const placed = new Set(parts.flatMap((p) => ("moduleId" in p ? [p.moduleId] : [])));
     const byId = new Map(post.modules.map((m) => [m.id, m]));
@@ -62,14 +67,14 @@ export default async function PostArticle({
 
     return (
         <>
-            {!preview && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(postJsonLd(post, comments)) }} />}
+            {!preview && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(postJsonLd(post, comments, social)) }} />}
             {!preview && <ViewCounter postId={post.id} />}
 
             {/* ─── Héros : image à la une derrière le titre (Pixwell) ─── */}
             {/* Toute la largeur de l'écran (petite marge), le titre aligné sur le contenu */}
             <section className="mt-3 px-2 sm:mt-4 sm:px-4 lg:px-5">
                 <div className="relative min-h-[460px] overflow-hidden rounded-[26px] bg-ink sm:min-h-[520px] sm:rounded-[36px] lg:h-[620px]">
-                    {img && <Image src={img.url} alt={img.alt} fill priority sizes="100vw" className="object-cover" />}
+                    {img && <Image src={img.url} alt={img.alt} fill preload sizes="100vw" className="object-cover" />}
                     <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/25" />
                     <div className="relative mx-auto flex h-full min-h-[460px] max-w-[1360px] flex-col px-5 pb-12 pt-6 text-white sm:min-h-[520px] sm:px-8 sm:pb-16 sm:pt-8 lg:min-h-0">
                         <nav className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-white/75" aria-label="Fil d'Ariane">
@@ -81,7 +86,7 @@ export default async function PostArticle({
                                 </>
                             )}
                             <ChevronRight className="h-3 w-3" />
-                            <span className="line-clamp-1 max-w-[50ch] text-white/55">{post.title}</span>
+                            <span className="line-clamp-1 max-w-[50ch] text-white/75">{post.title}</span>
                         </nav>
                         <div className="mt-auto max-w-[980px]">
                             <div className="flex flex-wrap gap-2">
@@ -176,7 +181,7 @@ export default async function PostArticle({
                         <div key={a.id} className="mt-12 flex gap-5 rounded-[28px] border border-ink/10 bg-white p-7">
                             <Avatar author={a} size={84} />
                             <div className="min-w-0">
-                                <div className="lab text-ink/45">Écrit par</div>
+                                <div className="lab text-ink/65">Écrit par</div>
                                 <div className="mt-1 font-display text-[28px] leading-none">{a.name}</div>
                                 {a.title && <div className="mt-1 text-sm font-semibold text-accentdark">{a.title}</div>}
                                 {a.bio && <p className="mt-2 text-[15px] text-ink/65">{a.bio}</p>}
@@ -190,7 +195,7 @@ export default async function PostArticle({
                     {/* Rédacteurs invités (coup de cœur externe) */}
                     {post.contributors.length > 0 && (
                         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[24px] border border-ink/10 bg-white px-6 py-4">
-                            <span className="lab text-ink/45">Avec la participation de</span>
+                            <span className="lab text-ink/65">Avec la participation de</span>
                             {post.contributors.map((c) => (
                                 <Link key={c.id} href={`/author/${c.slug}/`} className="inline-flex items-center gap-2 text-sm font-semibold hover:text-accentdark">
                                     <Avatar author={c} size={30} /> {c.name}
@@ -202,7 +207,7 @@ export default async function PostArticle({
                     {/* Correcteur : la relecture ne se fait pas dans l'ombre */}
                     {post.corrector && (
                         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[24px] border border-ink/10 bg-white px-6 py-4">
-                            <span className="lab text-ink/45">Relu et corrigé par</span>
+                            <span className="lab text-ink/65">Relu et corrigé par</span>
                             {post.corrector.slug ? (
                                 <Link href={`/author/${post.corrector.slug}/`} className="inline-flex items-center gap-2 text-sm font-semibold hover:text-accentdark">
                                     <Avatar author={post.corrector} size={30} /> {post.corrector.name}
@@ -225,7 +230,7 @@ export default async function PostArticle({
 
                     {/* Commentaires (lot 6) */}
                     {preview ? (
-                        <p className="mt-12 rounded-[24px] border border-dashed border-ink/15 bg-white p-5 text-sm text-ink/55">Les commentaires s&apos;afficheront ici une fois l&apos;article publié.</p>
+                        <p className="mt-12 rounded-[24px] border border-dashed border-ink/15 bg-white p-5 text-sm text-ink/65">Les commentaires s&apos;afficheront ici une fois l&apos;article publié.</p>
                     ) : (
                         <Comments postId={post.id} slug={post.slug} initial={comments} />
                     )}
@@ -266,7 +271,7 @@ function AdjacentLink({ post, direction }: { post: { slug: string; title: string
         <Link href={`/${post.slug}/`} rel={isNext ? "next" : "prev"} className={`flex items-center gap-4 rounded-[24px] border border-ink/10 bg-white p-4 hover:border-ink/25 ${isNext ? "text-right" : ""}`}>
             {!isNext && thumb}
             <span className="min-w-0 flex-1">
-                <span className={`flex items-center gap-1 text-xs font-semibold text-ink/45 ${isNext ? "justify-end" : ""}`}>
+                <span className={`flex items-center gap-1 text-xs font-semibold text-ink/65 ${isNext ? "justify-end" : ""}`}>
                     {!isNext && <ArrowLeft className="h-3.5 w-3.5" />}
                     {isNext ? "Article suivant" : "Article précédent"}
                     {isNext && <ArrowRight className="h-3.5 w-3.5" />}

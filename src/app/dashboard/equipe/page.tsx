@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FileCheck, SpellCheck, UserPlus, Users } from "lucide-react";
 import { notFound } from "next/navigation";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can, ROLE_LABELS, type Role } from "@/lib/roles";
 import { connectDB } from "@/lib/db";
 import { avatarSrc } from "@/lib/avatar";
@@ -23,7 +23,7 @@ const daysAgo = (n: number) => new Date(new Date().getTime() - n * 86_400_000);
  * rôle sans deviner le pseudo exact.
  */
 export default async function TeamPage({ searchParams }: Props) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "team.manage")) notFound();
     const sp = await searchParams;
     const query = sp.q?.trim();

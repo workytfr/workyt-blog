@@ -60,7 +60,7 @@ export default function TocRail({ items, readingMinutes }: { items: TocItem[]; r
             >
                 <div className="flex items-baseline justify-between gap-3">
                     <span className="font-display text-lg">Sommaire</span>
-                    <span className="text-[11px] text-ink/45">{progress >= 0.98 ? "Lu jusqu'au bout" : `Encore ${left} min`}</span>
+                    <span className="text-[11px] text-ink/65">{progress >= 0.98 ? "Lu jusqu'au bout" : `Encore ${left} min`}</span>
                 </div>
                 <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-paper2">
                     <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${progress * 100}%` }} />
@@ -75,17 +75,17 @@ export default function TocRail({ items, readingMinutes }: { items: TocItem[]; r
                                 <a
                                     href={`#${t.id}`}
                                     tabIndex={visible ? 0 : -1}
-                                    className={`relative flex gap-2 rounded-lg py-1.5 pr-1 transition hover:text-ink ${sub ? "pl-7 text-[12.5px]" : "pl-4"} ${on ? "font-bold text-ink" : done ? "text-ink/40" : "text-ink/60"}`}
+                                    className={`relative flex gap-2 rounded-lg py-1.5 pr-1 transition hover:text-ink ${sub ? "pl-7 text-[12.5px]" : "pl-4"} ${on ? "font-bold text-ink" : done ? "text-ink/65" : "text-ink/80"}`}
                                 >
                                     {!sub && <span className={`absolute left-0.5 top-[13px] h-1.5 w-1.5 rounded-full ${on ? "bg-accent shadow-[0_0_0_4px_rgba(255,106,26,.2)]" : done ? "bg-accent/60" : "bg-ink/20"}`} />}
-                                    {sub && <span className={`${on ? "text-accent" : "text-ink/30"}`}>→</span>}
+                                    {sub && <span className={`${on ? "text-accent" : "text-ink/30"}`} aria-hidden>→</span>}
                                     <span className={on ? "bg-[linear-gradient(transparent_55%,rgb(255_181_71/.8)_55%)] [box-decoration-break:clone]" : done ? "line-through decoration-ink/25" : ""}>{t.text}</span>
                                 </a>
                             </li>
                         );
                     })}
                 </ol>
-                <a href="#sommaire" tabIndex={visible ? 0 : -1} className="mt-3 block text-[11px] font-semibold text-ink/45 hover:text-ink">
+                <a href="#sommaire" tabIndex={visible ? 0 : -1} className="mt-3 block text-[11px] font-semibold text-ink/65 hover:text-ink">
                     ↑ Haut de l&apos;article
                 </a>
             </nav>

@@ -28,14 +28,14 @@ export default function Sources({ items, cited }: { items: SourceItem[]; cited: 
                                 ) : (
                                     <b>{s.title}</b>
                                 )}
-                                {s.publisher && <span className="text-ink/60">, {s.publisher}</span>}
-                                {s.date && <span className="text-ink/60">, {fmtDate(s.date)}</span>}
-                                <span className="ml-2 rounded-full bg-paper2 px-2 py-0.5 text-[11px] text-ink/55">{s.kind}</span>
+                                {s.publisher && <span className="text-ink/65">, {s.publisher}</span>}
+                                {s.date && <span className="text-ink/65">, {fmtDate(s.date)}</span>}
+                                <span className="ml-2 rounded-full bg-paper2 px-2 py-0.5 text-[11px] text-ink/65">{s.kind}</span>
                             </p>
-                            {s.quote && <blockquote className="mt-1 border-l-2 border-ink/15 pl-3 text-sm italic text-ink/60">« {s.quote} »</blockquote>}
-                            {s.accessed && <p className="mt-0.5 text-xs text-ink/40">Consulté le {fmtDate(s.accessed)}</p>}
+                            {s.quote && <blockquote className="mt-1 border-l-2 border-ink/15 pl-3 text-sm italic text-ink/65">« {s.quote} »</blockquote>}
+                            {s.accessed && <p className="mt-0.5 text-xs text-ink/65">Consulté le {fmtDate(s.accessed)}</p>}
                             {cited.has(s.id) && (
-                                <a href={`#cite-${s.id}-1`} className="mt-1 inline-flex items-center gap-1 text-xs text-ink/45 hover:text-accentdark" aria-label="Retour au texte">
+                                <a href={`#cite-${s.id}-1`} className="mt-1 inline-flex items-center gap-1 text-xs text-ink/65 hover:text-accentdark" aria-label="Retour au texte">
                                     <ArrowUp className="h-3 w-3" /> au texte
                                 </a>
                             )}

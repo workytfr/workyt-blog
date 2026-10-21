@@ -108,13 +108,13 @@ export default function RecipeCard({ data }: { data: RecipeData }) {
                     <h4 className="font-display text-xl">Ingrédients</h4>
                     {data.ingredientGroups.map((g, gi) => (
                         <div key={gi} className="mt-3">
-                            {g.title && <p className="mb-1 text-xs font-bold uppercase tracking-[0.08em] text-ink/50">{g.title}</p>}
+                            {g.title && <p className="mb-1 text-xs font-bold uppercase tracking-[0.08em] text-ink/65">{g.title}</p>}
                             <ul className="space-y-1">
                                 {g.items.map((it, ii) => {
                                     const k = `${gi}-${ii}`;
                                     return (
                                         <li key={k}>
-                                            <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg px-1 py-1 text-[15px] hover:bg-paper ${checked.has(k) ? "text-ink/40 line-through" : ""}`}>
+                                            <label className={`flex cursor-pointer items-start gap-2.5 rounded-lg px-1 py-1 text-[15px] hover:bg-paper ${checked.has(k) ? "text-ink/65 line-through" : ""}`}>
                                                 <input type="checkbox" checked={checked.has(k)} onChange={() => toggle(k)} className="mt-1 h-4 w-4 accent-[#ff6a1a]" />
                                                 <span>
                                                     {(it.qty || it.unit) && (

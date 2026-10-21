@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import mongoose from "mongoose";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { connectDB } from "@/lib/db";
 import { can } from "@/lib/roles";
 import { carouselDraft } from "@/lib/carousel/draft";
@@ -11,7 +11,7 @@ import CarouselStudio from "./CarouselStudio";
 export default async function CarouselPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) notFound();
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "social.export")) {
         return (
             <main className="grid flex-1 place-items-center p-8 text-center">

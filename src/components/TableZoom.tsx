@@ -64,7 +64,7 @@ export default function TableZoom() {
                     <X className="h-4 w-4" /> Fermer
                 </button>
             </div>
-            <p className="px-4 pt-3 text-xs text-ink/55 sm:hidden">Astuce : tourne ton téléphone pour voir plus de colonnes.</p>
+            <p className="px-4 pt-3 text-xs text-ink/65 sm:hidden">Astuce : tourne ton téléphone pour voir plus de colonnes.</p>
             {/* HTML déjà assaini (rendu de l'article) */}
             <div className="post-content wk-table-full flex-1 overflow-auto p-4 sm:p-6" dangerouslySetInnerHTML={{ __html: table }} />
         </div>,

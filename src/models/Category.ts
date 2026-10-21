@@ -22,6 +22,9 @@ const CategorySchema = new Schema(
     { timestamps: true }
 );
 
+// Sous-rubriques d'une rubrique, rubriques de premier niveau (parent: null)
+CategorySchema.index({ parent: 1 });
+
 export type CategoryDoc = InferSchemaType<typeof CategorySchema> & { _id: mongoose.Types.ObjectId };
 
 const Category: Model<CategoryDoc> =

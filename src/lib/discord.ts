@@ -34,6 +34,8 @@ export async function notifyReviewDiscord(post: {
         const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            // Discord qui ne répond pas ne retient pas la fonction indéfiniment
+            signal: AbortSignal.timeout(5000),
             body: JSON.stringify({
                 embeds: [{ title: `✏️ Nouvel article à corriger : ${post.title}`.slice(0, 256), color: 0xf97316, fields, timestamp: new Date().toISOString() }],
             }),

@@ -237,7 +237,7 @@ export const SocialEmbed = Node.create({
     renderHTML({ node, HTMLAttributes }) {
         const provider = String(node.attrs.provider);
         const label = isEmbedProvider(provider) ? EMBED_PROVIDERS[provider].label : "le contenu";
-        return ["div", mergeAttributes(HTMLAttributes, { class: "wk-embed" }), ["a", { href: node.attrs.url }, `Voir sur ${label}`]];
+        return ["div", mergeAttributes(HTMLAttributes, { class: "wk-embed" }), ["a", { href: /^https?:\/\//i.test(String(node.attrs.url)) ? node.attrs.url : "" }, `Voir sur ${label}`]];
     },
 });
 

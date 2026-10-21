@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 import sharp from "sharp";
+import { connectDB } from "./db";
+import { memoized } from "./content";
+import Category from "@/models/Category";
+import Tag from "@/models/Tag";
+import Author from "@/models/Author";
 
 /**
  * Cartes de partage (Open Graph) : ce qui s'affiche quand on partage un lien
@@ -126,6 +131,83 @@ export async function renderOgCard(card: OgCard): Promise<Buffer> {
 
     const png = Buffer.from(await new ImageResponse(element, { ...OG_SIZE, fonts }).arrayBuffer());
     return sharp(png).jpeg({ quality: 82, mozjpeg: true }).toBuffer();
+}
+
+/* ─── Cache des cartes ─── */
+
+const OG_TTL_MS = 60 * 60_000;
+/** 100 cartes au plus (≈ 100 à 200 Ko chacune) : les plus anciennement servies sortent d'abord */
+const OG_MAX = 100;
+/** Titre ou étiquette plus long : carte du blog (aucun nom légitime n'en approche) */
+export const OG_MAX_TEXT = 120;
+
+const ogState = globalThis as unknown as { __blogOgCards?: { done: Map<string, { at: number; jpg: Buffer }>; pending: Map<string, Promise<Buffer | null>> } };
+ogState.__blogOgCards ??= { done: new Map(), pending: new Map() };
+const { done: ogCards, pending: ogPending } = ogState.__blogOgCards;
+
+/**
+ * Carte gardée 1 h en mémoire (LRU borné à OG_MAX), un seul rendu en vol
+ * par clé. `load` peut renvoyer null (article introuvable…) : rien n'est
+ * gardé, l'appelant sert la carte du blog.
+ */
+export function cachedOgCard(key: string, load: () => Promise<OgCard | null>): Promise<Buffer | null> {
+    const hit = ogCards.get(key);
+    if (hit && Date.now() - hit.at < OG_TTL_MS) {
+        // Remise en fin de file : la plus récemment servie
+        ogCards.delete(key);
+        ogCards.set(key, hit);
+        return Promise.resolve(hit.jpg);
+    }
+    const inflight = ogPending.get(key);
+    if (inflight) return inflight;
+    const p = load()
+        .then((card) => (card ? renderOgCard(card) : null))
+        .then((jpg) => {
+            ogCards.delete(key);
+            if (jpg) ogCards.set(key, { at: Date.now(), jpg });
+            while (ogCards.size > OG_MAX) ogCards.delete(ogCards.keys().next().value!);
+            return jpg;
+        })
+        .finally(() => ogPending.delete(key));
+    ogPending.set(key, p);
+    return p;
+}
+
+/** La carte du blog (accueil, adresses inconnues) */
+export async function defaultOgCard(): Promise<Buffer> {
+    return (await cachedOgCard("default", async () => ({ title: "Le blog de Workyt", kicker: "Actualités · Conseils · Culture" })))!;
+}
+
+/**
+ * Cartes que les pages demandent vraiment (lib/seo, ogCard) : titre → étiquettes
+ * permises. Rubriques, étiquettes (#nom) et auteurs ; gardé 10 min en mémoire.
+ */
+function knownCards(): Promise<Map<string, Set<string>>> {
+    return memoized("og:knownCards", 10 * 60_000, async () => {
+        await connectDB();
+        const [cats, tags, authors] = await Promise.all([
+            Category.find({}).select("name").lean(),
+            Tag.find({}).select("name").lean(),
+            Author.find({}).select("name title").lean(),
+        ]);
+        const map = new Map<string, Set<string>>();
+        const add = (title: string, kicker: string) => map.set(title, (map.get(title) ?? new Set()).add(kicker));
+        cats.forEach((c) => add(c.name, "Rubrique"));
+        tags.forEach((t) => add(`#${t.name}`, "Étiquette"));
+        authors.forEach((a) => add(a.name, a.title || "Auteur du blog"));
+        return map;
+    });
+}
+
+/** Le couple titre / étiquette correspond-il à une page du blog ? Non si la base est injoignable. */
+export async function isKnownOgCard(title: string, kicker: string): Promise<boolean> {
+    if (title.length > OG_MAX_TEXT || kicker.length > OG_MAX_TEXT) return false;
+    try {
+        return !!(await knownCards()).get(title)?.has(kicker);
+    } catch (error) {
+        console.error("[og] noms des pages illisibles :", (error as Error).message);
+        return false;
+    }
 }
 
 /** Réponse HTTP d'une carte : mise en cache un jour (les réseaux la redemandent rarement) */

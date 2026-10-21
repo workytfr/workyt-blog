@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { CalendarClock, CheckCircle2, FileClock, Images, PenLine, RotateCcw } from "lucide-react";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { connectDB } from "@/lib/db";
 import { relativeDate } from "@/lib/format";
+import { parisMonthStart } from "@/lib/parisTime";
 import { avatarSrc } from "@/lib/avatar";
 import { STATUS_LABELS } from "@/editor/types";
 import Post from "@/models/Post";
@@ -17,14 +18,15 @@ type Props = { searchParams: Promise<{ vue?: string }> };
 
 /** Accueil du dashboard (§ 13.1) : bilan, premiers pas, raccourcis, articles, à faire */
 export default async function Dashboard({ searchParams }: Props) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     const { vue } = await searchParams;
     await connectDB();
     const role = session.user.role;
     const chief = role === "admin" || role === "redac_chef";
     const me = await Member.findById(session.user.memberId).select("author").lean();
     const mine = me?.author ?? null;
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    // Début du mois à Paris (le serveur tourne en UTC)
+    const monthStart = parisMonthStart();
 
     const [publishedMonth, monthViews, toRevise, toCorrect, toApprove, scheduled, toCheck, lastDraft, author, myPosts, myBestSeo, mySubmitted] = await Promise.all([
         Post.countDocuments({ status: "published", publishedAt: { $gte: monthStart, $lte: new Date() } }),

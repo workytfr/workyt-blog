@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 import { getTagBySlug, listPosts } from "@/lib/content";
 import { archiveMetadata } from "@/lib/seo";
 import Archive from "@/components/Archive";
+import { decodeSlug } from "@/lib/slug";
 
 const MIN_INDEXED_POSTS = 3;
 
 /** Étiquette : /tag/<slug>/ (hors sitemap, comme avec Rank Math) */
 export async function tagMetadata(slug: string, page: number): Promise<Metadata> {
-    const tag = await getTagBySlug(decodeURIComponent(slug));
+    const tag = await getTagBySlug(decodeSlug(slug));
     if (!tag) return { title: "Étiquette introuvable", robots: { index: false } };
     // Moins de 3 articles : page trop mince pour Google, mais ses liens restent suivis
     const { total } = await listPosts({ perPage: 1, tag: tag.id });
@@ -23,7 +24,7 @@ export async function tagMetadata(slug: string, page: number): Promise<Metadata>
 }
 
 export default async function TagArchive({ slug, page }: { slug: string; page: number }) {
-    const tag = await getTagBySlug(decodeURIComponent(slug));
+    const tag = await getTagBySlug(decodeSlug(slug));
     if (!tag) notFound();
     const list = await listPosts({ page, tag: tag.id });
     return <Archive eyebrow="Étiquette" title={`#${tag.name}`} description={tag.description} list={list} base={`/tag/${tag.slug}/`} />;

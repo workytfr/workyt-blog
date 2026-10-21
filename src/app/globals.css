@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ─── Thème : clair par défaut, sombre avec html.dark (bouton de l'en-tête) ───
-   Valeurs « r g b » pour les opacités de Tailwind (text-ink/60…). */
+   Valeurs « r g b » pour les opacités de Tailwind (text-ink/65…). */
 :root {
     --c-ink: 26 21 18;
     --c-paper: 253 250 244;
@@ -38,9 +38,10 @@ html.dark :is(.bg-sun, .bg-leaf, .bg-sky, .wk-on-light) {
     .chip {
         @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold;
     }
+    /* Fond orange foncé : texte blanc à 4,9:1 (sur #ff6a1a il n'atteignait que 2,9:1) */
     .btn-orange {
-        @apply inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-accent font-semibold text-white transition-transform hover:-translate-y-px;
-        box-shadow: 0 3px 0 #c24a0a, 0 8px 20px rgba(255, 106, 26, 0.28);
+        @apply inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-accentdark font-semibold text-white transition-transform hover:-translate-y-px;
+        box-shadow: 0 3px 0 #8a3306, 0 8px 20px rgba(255, 106, 26, 0.28);
     }
     .btn-ink {
         @apply inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-ink font-semibold text-white;
@@ -49,7 +50,7 @@ html.dark :is(.bg-sun, .bg-leaf, .bg-sky, .wk-on-light) {
         @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-ink/10 bg-white font-semibold;
     }
     .eyebrow {
-        @apply font-mono text-[10px] uppercase tracking-[0.18em] text-ink/45;
+        @apply font-mono text-[10px] uppercase tracking-[0.18em] text-ink/65;
     }
     .cat-pill {
         @apply inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em];

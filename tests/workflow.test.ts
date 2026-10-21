@@ -43,6 +43,14 @@ test("la rédaction en chef approuve maintenant ou planifie, refuse avec un moti
     assert.deepEqual(allowedActions({ ...c, status: "scheduled" }), ["unschedule"]);
 });
 
+test("une date de publication passée est refusée, pas publiée en silence", () => {
+    const now = new Date("2026-10-03T10:00:00Z");
+    const c = ctx({ role: "redac_chef", isAuthor: false, status: "pending_approval" });
+    fails(() => nextStatus("approve", c, { now, at: new Date("2026-10-02T18:00:00Z") }), 422);
+    fails(() => nextStatus("publish", { ...c, status: "draft" }, { now, at: new Date("2026-10-03T09:55:00Z") }), 422);
+    assert.equal(nextStatus("approve", c, { now, at: new Date("2026-10-03T09:59:30Z") }), "published", "quelques secondes d'écart d'horloge : tout de suite");
+});
+
 test("qui modifie le texte selon le statut", () => {
     const base = { role: "redacteur" as const, isAuthor: true, isCorrector: false };
     assert.equal(editMode({ ...base, status: "draft" }), "edit");

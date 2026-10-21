@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { connectDB } from "./db";
 import { can, type Role } from "./roles";
 import { avatarSrc } from "./avatar";
-import { PostError, type Actor } from "./posts";
+import { isId, PostError, type Actor } from "./posts";
 import { cleanCommentText, commentFlags, editableUntil, initialStatus, isReaction, rateLimit, REACTIONS, type ReactionKey } from "./commentRules";
 import Comment from "@/models/Comment";
 import Member from "@/models/Member";
@@ -17,7 +17,6 @@ import Reaction from "@/models/Reaction";
  * pures (filtre, délais) sont dans commentRules.ts.
  */
 
-const isId = (v: unknown): v is string => typeof v === "string" && mongoose.isValidObjectId(v);
 const MODERATORS: Role[] = ["correcteur", "redac_chef", "admin"];
 
 /** Commentaire tel qu'affiché sous l'article */
@@ -76,7 +75,8 @@ export async function listComments(postId: string, viewer?: string | null): Prom
     const or: Record<string, unknown>[] = [{ status: "published" }, { status: "deleted" }];
     if (viewer && isId(viewer)) or.push({ status: "pending", member: viewer });
     const [rows, post] = await Promise.all([
-        Comment.find({ post: postId, $or: or }).sort({ createdAt: 1 }).limit(500).lean(),
+        // Les 500 plus récents (au-delà, les plus anciens), remis ensuite dans l'ordre de lecture
+        Comment.find({ post: postId, $or: or }).sort({ createdAt: -1 }).limit(500).lean().then((r) => r.reverse()),
         Post.findById(postId).select("authors").lean(),
     ]);
     const memberIds = [...new Set(rows.map((r) => (r.member ? String(r.member) : "")).filter(Boolean))];
@@ -119,6 +119,16 @@ async function isTrusted(actor: Actor): Promise<boolean> {
     return !!(await Comment.exists({ member: actor.memberId, status: "published" }));
 }
 
+/** Limite de fréquence d'un membre ; `before` : seulement ses commentaires écrits avant celui-ci */
+async function commentLimit(memberId: string, before?: mongoose.Types.ObjectId): Promise<string | null> {
+    const mine = { member: memberId, ...(before ? { _id: { $lt: before } } : {}) };
+    const [last, lastHour] = await Promise.all([
+        Comment.findOne(mine).sort({ createdAt: -1 }).select("createdAt").lean(),
+        Comment.countDocuments({ ...mine, createdAt: { $gte: new Date(Date.now() - 3600_000) } }),
+    ]);
+    return rateLimit({ lastAt: last?.createdAt ?? null, lastHour });
+}
+
 export async function createComment(actor: Actor, postId: string, input: { text?: unknown; parentId?: unknown }) {
     if (!can(actor.role, "comment")) throw new PostError("Connecte-toi pour commenter.", 401);
     const post = await publishedPost(postId);
@@ -134,15 +144,18 @@ export async function createComment(actor: Actor, postId: string, input: { text?
         parent = (p.parent as mongoose.Types.ObjectId | null) ?? p._id;
     }
 
-    const [last, lastHour] = await Promise.all([
-        Comment.findOne({ member: actor.memberId }).sort({ createdAt: -1 }).select("createdAt").lean(),
-        Comment.countDocuments({ member: actor.memberId, createdAt: { $gte: new Date(Date.now() - 3600_000) } }),
-    ]);
-    const limited = rateLimit({ lastAt: last?.createdAt ?? null, lastHour });
+    const limited = await commentLimit(actor.memberId);
     if (limited) throw new PostError(limited, 429);
 
     const { status, reasons } = initialStatus({ trusted: await isTrusted(actor), flags: commentFlags(text) });
     const c = await Comment.create({ post: post._id, parent, member: actor.memberId, name: actor.name || "Membre", text, status, reasons, publishedAt: status === "published" ? new Date() : null });
+    // Envois simultanés : chacun a passé le contrôle avant que l'autre soit écrit. Contrôle refait sur ce
+    // qui précède ce commentaire (ordre des identifiants) : le premier reste, les suivants sont retirés
+    const raced = await commentLimit(actor.memberId, c._id);
+    if (raced) {
+        await Comment.deleteOne({ _id: c._id });
+        throw new PostError(raced, 429);
+    }
 
     if (status === "published") {
         await refresh(post._id, post.slug);
@@ -201,6 +214,10 @@ export async function toggleLike(actor: Actor, id: string) {
     return { liked: !liked, likes: next?.likes?.length ?? 0 };
 }
 
+/** Signalements de lecteurs différents avant de retirer un commentaire, et plafond par compte */
+const REPORTS_TO_HIDE = 3;
+const REPORTS_PER_HOUR = 10;
+
 export async function reportComment(actor: Actor, id: string) {
     if (!isId(id)) throw new PostError("Commentaire introuvable.", 404);
     await connectDB();
@@ -208,12 +225,16 @@ export async function reportComment(actor: Actor, id: string) {
     if (!c || c.status !== "published") throw new PostError("Commentaire introuvable.", 404);
     if (c.member && String(c.member) === actor.memberId) throw new PostError("C'est ton propre commentaire.", 400);
     if (c.reports.some((r) => String(r.member) === actor.memberId)) return { already: true };
+    // Un compte ne signale pas tout le site : quelques signalements par heure
+    const recent = await Comment.countDocuments({ reports: { $elemMatch: { member: actor.memberId, at: { $gte: new Date(Date.now() - 3_600_000) } } } });
+    if (recent >= REPORTS_PER_HOUR) throw new PostError("Tu as déjà signalé plusieurs commentaires. La modération va les regarder.", 429);
     c.reports.push({ member: new mongoose.Types.ObjectId(actor.memberId), at: new Date() });
-    // Signalé : retiré en attendant la modération
-    c.status = "pending";
+    // Retiré en attendant la modération dès qu'un membre de la rédaction le signale, ou après plusieurs lecteurs différents
+    const hide = actor.role !== "lecteur" || c.reports.length >= REPORTS_TO_HIDE;
+    if (hide) c.status = "pending";
     c.reasons = [...new Set([...c.reasons, "signalé"])];
     await c.save();
-    await refresh(c.post);
+    if (hide) await refresh(c.post);
     const post = await Post.findById(c.post).select("title").lean();
     if (post) await notifyModerators(post, actor.name, ["signalé"], "signale un commentaire");
     return { already: false };
@@ -330,13 +351,25 @@ export async function myReaction(postId: string, voter: string): Promise<Reactio
 
 /** Choisit (ou retire, avec null) sa réaction ; renvoie les nouveaux totaux */
 export async function setReaction(postId: string, voter: string, type: unknown): Promise<{ counts: ReactionCounts; mine: ReactionKey | null }> {
+    if (type !== null && !isReaction(type)) throw new PostError("Réaction inconnue.", 400);
     const post = await publishedPost(postId);
-    if (type === null) await Reaction.deleteOne({ post: post._id, voter });
-    else if (isReaction(type)) await Reaction.updateOne({ post: post._id, voter }, { $set: { type } }, { upsert: true });
-    else throw new PostError("Réaction inconnue.", 400);
-    const totals = await Reaction.aggregate<{ _id: string; n: number }>([{ $match: { post: post._id } }, { $group: { _id: "$type", n: { $sum: 1 } } }]);
-    const counts = Object.fromEntries(totals.filter((t) => isReaction(t._id)).map((t) => [t._id, t.n])) as ReactionCounts;
+    // Ancienne réaction lue et remplacée en une seule opération : deux clics simultanés ne comptent pas double
+    const previous =
+        type === null
+            ? await Reaction.findOneAndDelete({ post: post._id, voter }).select("type").lean()
+            : await Reaction.findOneAndUpdate({ post: post._id, voter }, { $set: { type } }, { upsert: true, new: false }).select("type").lean();
+    const before = previous && isReaction(previous.type) ? previous.type : null;
+    const inc: Record<string, number> = {};
+    if (before !== type) {
+        if (before) inc[`reactions.${before}`] = -1;
+        if (type) inc[`reactions.${type}`] = 1;
+    }
+    // $inc : les totaux ne sont jamais réécrits d'après une lecture déjà dépassée par un autre vote.
     // strict: false : le total s'écrit même si le modèle chargé date d'avant le champ « reactions » (rechargement à chaud)
-    await Post.updateOne({ _id: post._id }, { $set: { reactions: counts } }, { strict: false, timestamps: false });
-    return { counts, mine: type === null ? null : (type as ReactionKey) };
+    const fresh = Object.keys(inc).length
+        ? await Post.findOneAndUpdate({ _id: post._id }, { $inc: inc }, { new: true, strict: false, timestamps: false }).select("reactions").lean()
+        : await Post.findById(post._id).select("reactions").lean();
+    const raw = (fresh?.reactions ?? {}) as Record<string, number>;
+    const counts = Object.fromEntries(REACTIONS.map((r) => [r.key, raw[r.key] ?? 0]).filter(([, n]) => (n as number) > 0)) as ReactionCounts;
+    return { counts, mine: type };
 }

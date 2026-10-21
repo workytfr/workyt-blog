@@ -1,4 +1,3 @@
-import "katex/dist/katex.min.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 

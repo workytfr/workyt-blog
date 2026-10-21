@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { applyAction } from "@/lib/review";
 import { ACTION_LABELS, type WorkflowAction } from "@/lib/workflow";
 import { currentActor, errorResponse, unauthorized } from "@/lib/session";
@@ -16,12 +15,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const action = body?.action as WorkflowAction;
     if (!action || !(action in ACTION_LABELS)) return NextResponse.json({ success: false, error: "Action inconnue." }, { status: 400 });
     try {
+        // Pages publiques régénérées par applyAction (article, accueil, rubriques, étiquettes, auteurs)
         const result = await applyAction((await params).id, action, actor, { reason: body.reason, at: body.at });
-        // Pages publiques concernées : l'article et les listes
-        if (["approve", "publish", "unpublish", "unschedule"].includes(action)) {
-            revalidatePath(`/${result.slug}/`);
-            revalidatePath("/");
-        }
         return NextResponse.json({ success: true, data: result });
     } catch (error) {
         return errorResponse(error);

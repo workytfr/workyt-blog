@@ -65,6 +65,8 @@ const SANITIZE: sanitizeHtml.IOptions = {
             }
             return { tagName, attribs: { ...attribs, ...(external ? { target: "_blank", rel: [...rel].join(" ") } : {}) } };
         },
+        // Un seul H1 par page (le titre) : ceux du contenu repris de WordPress passent en H2
+        h1: (_tagName, attribs) => ({ tagName: "h2", attribs }),
         img: (tagName, attribs) => ({ tagName, attribs: { ...attribs, loading: "lazy", decoding: "async" } }),
         iframe: (tagName, attribs) => ({ tagName, attribs: { ...attribs, loading: "lazy" } }),
         // Cases à cocher des listes de tâches : affichées, jamais modifiables
@@ -91,6 +93,8 @@ type RenderOptions = {
     affiliates?: Record<string, string>;
     /** Image à la une, déjà affichée dans le héros : retirée du début du texte si elle y est aussi */
     featuredUrl?: string;
+    /** Images de la médiathèque en plusieurs tailles (optimiseur de Next) : sur le blog seulement, pas dans le flux */
+    responsiveImages?: boolean;
 };
 
 export function renderPostHtml(html: string, opts: RenderOptions = {}): string {
@@ -110,7 +114,46 @@ function render(html: string, opts: RenderOptions): { html: string; toc: TocItem
     // Logo du site à droite des liens : sur le blog seulement (pas dans le flux RSS, où les adresses relatives casseraient)
     const withIcons = wrapTables(wrapQuotes(wrapHeadings(opts.linkIcons ? addLinkIcons(anchored, opts.affiliates) : anchored)));
     // Lettrine sur le premier paragraphe du texte (pas celui d'une citation, d'un encadré, d'une liste…)
-    return { html: withLead(renderCitations(renderMath(withIcons), opts.sourceIds ?? [])), toc };
+    const out = withLead(renderCitations(renderMath(withIcons), opts.sourceIds ?? []));
+    return { html: opts.responsiveImages ? withSrcset(out) : out, toc };
+}
+
+/* ─── Images en plusieurs tailles ─── */
+
+/** Hôtes autorisés par images.remotePatterns (next.config.ts) : les autres images restent telles quelles */
+const MEDIA_HOSTS = (process.env.MEDIA_HOSTS || "images.unsplash.com")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+/** Largeurs acceptées par l'optimiseur (deviceSizes et imageSizes par défaut), sinon il répond 400 */
+const WIDTHS = [384, 640, 750, 828, 1080, 1200, 1920];
+/** Colonne de l'article : 840 px au plus (barre latérale à droite), toute la largeur sur mobile */
+const SIZES = "(min-width: 1360px) 840px, 100vw";
+
+const optimizable = (src: string) => {
+    try {
+        const u = new URL(src);
+        // SVG et GIF : refusés ou non retraités par l'optimiseur
+        return u.protocol === "https:" && MEDIA_HOSTS.includes(u.hostname) && !/\.(svg|gif)$/i.test(u.pathname);
+    } catch {
+        return false;
+    }
+};
+
+/** srcset via /_next/image (q=75, seule qualité permise par défaut en Next 16), sans agrandir l'original */
+function withSrcset(html: string): string {
+    return html.replace(/<img\b[^>]*>/g, (tag) => {
+        if (/\ssrcset=/.test(tag)) return tag;
+        const src = decodeEntities(tag.match(/\ssrc="([^"]*)"/)?.[1] ?? "");
+        if (!optimizable(src)) return tag;
+        const natural = Number(tag.match(/\swidth="(\d+)"/)?.[1]) || Infinity;
+        const widths = WIDTHS.filter((w) => w <= natural);
+        if (!widths.length) return tag;
+        // L'original en dernier choix (plus grand que toutes les tailles retenues)
+        const candidates = [...widths.map((w) => `/_next/image?url=${encodeURIComponent(src)}&amp;w=${w}&amp;q=75 ${w}w`), ...(Number.isFinite(natural) && !widths.includes(natural) ? [`${escapeHtml(src)} ${natural}w`] : [])];
+        const srcset = candidates.join(", ");
+        return tag.replace(/^<img\b/, `<img srcset="${srcset}" sizes="${SIZES}"`);
+    });
 }
 
 /**

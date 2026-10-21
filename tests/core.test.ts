@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { can, canAssignRole, initialRole } from "../src/lib/roles";
 import { normalizePath } from "../src/lib/redirects";
+import { decodeSlug } from "../src/lib/slug";
 import { formatDate, formatTime, joinNames } from "../src/lib/format";
 import { absoluteUrl, pageTitle } from "../src/lib/site";
 import { plainText, readingMinutes, renderPostHtml } from "../src/lib/render";
@@ -83,4 +84,9 @@ test("image à la une pas répétée en tête du texte", () => {
     assert.ok(renderPostHtml(`${fig("https://s3.example/autre.webp")}<p>Intro</p>`, { featuredUrl: une }).includes("autre.webp"), "une autre image en tête reste");
     assert.ok(renderPostHtml(`<p><img src="${une}?w=800"></p><p>Intro</p>`, { featuredUrl: une }).startsWith('<p class="lead">Intro'), "image seule dans un paragraphe");
     assert.ok(renderPostHtml(`${fig(une)}<p>Intro</p>`).includes("une.webp"), "sans image à la une, rien ne change");
+});
+
+test("adresse mal encodée : gardée telle quelle (404, pas d'erreur)", () => {
+    assert.equal(decodeSlug("%C3%A9t%C3%A9"), "été");
+    assert.equal(decodeSlug("%E9"), "%E9");
 });

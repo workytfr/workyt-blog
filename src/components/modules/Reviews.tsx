@@ -30,7 +30,7 @@ export function TechReview({ data }: { data: TechReviewData }) {
                 <div className="min-w-0 flex-1">
                     <Eyebrow icon={Cpu}>Notre avis</Eyebrow>
                     <h3 className="mt-2 font-display text-[28px] leading-tight">{data.product}</h3>
-                    <p className="mt-1 text-sm text-ink/55">{[data.brand, data.model, data.price && `Prix constaté : ${data.price}`].filter(Boolean).join(" · ")}</p>
+                    <p className="mt-1 text-sm text-ink/65">{[data.brand, data.model, data.price && `Prix constaté : ${data.price}`].filter(Boolean).join(" · ")}</p>
                 </div>
                 <ScoreBadge value={data.score} max={10} />
             </div>
@@ -55,7 +55,7 @@ export function TechReview({ data }: { data: TechReviewData }) {
                         <tbody>
                             {data.specs.map((s) => (
                                 <tr key={s.key} className="border-t border-ink/5">
-                                    <th className="w-2/5 py-2 pr-4 text-left font-semibold text-ink/60">{s.key}</th>
+                                    <th className="w-2/5 py-2 pr-4 text-left font-semibold text-ink/65">{s.key}</th>
                                     <td className="py-2">{s.value}</td>
                                 </tr>
                             ))}
@@ -96,7 +96,7 @@ export function BookReview({ data }: { data: BookReviewData }) {
                         )}
                     </div>
                     <h3 className="mt-2 font-display text-[28px] leading-tight">{data.title}</h3>
-                    <p className="text-[15px] text-ink/60">{data.authors}</p>
+                    <p className="text-[15px] text-ink/65">{data.authors}</p>
                     <div className="mt-3 flex items-center gap-2">
                         <Stars value={data.score} size={20} />
                         <span className="text-sm font-semibold">{String(data.score).replace(".", ",")}/5</span>
@@ -105,7 +105,7 @@ export function BookReview({ data }: { data: BookReviewData }) {
                     <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-3">
                         {facts.map(([k, v]) => (
                             <div key={k}>
-                                <dt className="text-xs text-ink/45">{k}</dt>
+                                <dt className="text-xs text-ink/65">{k}</dt>
                                 <dd className="font-semibold">{v}</dd>
                             </div>
                         ))}
@@ -138,7 +138,7 @@ export function ProductReview({ data }: { data: ProductReviewData }) {
                             <ShoppingBag className="h-4 w-4" /> Voir {data.merchant ? `chez ${data.merchant}` : "l'offre"}
                         </MerchantLink>
                     )}
-                    {data.link && isAffiliateHref(data.link) && <p className="mt-2 text-[11px] text-ink/45">Lien sponsorisé : Workyt peut toucher une commission, sans surcoût pour toi.</p>}
+                    {data.link && isAffiliateHref(data.link) && <p className="mt-2 text-[11px] text-ink/65">Lien sponsorisé : Workyt peut toucher une commission, sans surcoût pour toi.</p>}
                 </div>
                 <ScoreBadge value={data.score} max={10} />
             </div>
@@ -159,7 +159,7 @@ export function ProductComparison({ items }: { items: ProductReviewData[] }) {
             <table className="w-full min-w-[520px] text-sm">
                 <caption className="px-6 pt-6 text-left font-display text-2xl sm:px-7">Le comparatif</caption>
                 <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-ink/45">
+                    <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-ink/65">
                         <th className="px-6 py-3 sm:px-7">Produit</th>
                         <th className="px-3 py-3">Note</th>
                         <th className="px-3 py-3">Prix</th>
@@ -172,7 +172,7 @@ export function ProductComparison({ items }: { items: ProductReviewData[] }) {
                         .map((p, i) => (
                             <tr key={p.product} className="border-t border-ink/5">
                                 <td className="px-6 py-3 font-semibold sm:px-7">
-                                    {i === 0 && <span className="mr-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase text-white">Meilleur</span>}
+                                    {i === 0 && <span className="mr-2 rounded-full bg-accentdark px-2 py-0.5 text-[10px] font-bold uppercase text-white">Meilleur</span>}
                                     {p.product}
                                 </td>
                                 <td className="px-3 py-3">

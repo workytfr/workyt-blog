@@ -9,10 +9,11 @@ import { workytProfileUrl } from "@/lib/avatar";
 import PostCard from "@/components/PostCard";
 import Pagination from "@/components/Pagination";
 import { Avatar } from "@/components/ui";
+import { decodeSlug } from "@/lib/slug";
 
 /** Auteur : /author/<slug>/ (pages PublishPress Authors) */
 export async function authorMetadata(slug: string, page: number): Promise<Metadata> {
-    const a = await getAuthorBySlug(decodeURIComponent(slug));
+    const a = await getAuthorBySlug(decodeSlug(slug));
     if (!a) return { title: "Auteur introuvable", robots: { index: false } };
     return archiveMetadata({
         title: a.seo.title || a.name,
@@ -33,7 +34,7 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { m
  * colonne avec ses rubriques et le lien vers son profil Workyt.
  */
 export default async function AuthorArchive({ slug, page }: { slug: string; page: number }) {
-    const a = await getAuthorBySlug(decodeURIComponent(slug));
+    const a = await getAuthorBySlug(decodeSlug(slug));
     if (!a) notFound();
     const [list, stats] = await Promise.all([listPosts({ page, author: a.id }), authorStats(a.id)]);
     if (list.page > 1 && list.items.length === 0) notFound();
@@ -68,7 +69,7 @@ export default async function AuthorArchive({ slug, page }: { slug: string; page
                                 <div className="mt-4 flex flex-wrap items-center gap-2">
                                     {a.title && <span className="inline-flex items-center rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-sm font-semibold text-accentdark">{a.title}</span>}
                                     {stats.since && (
-                                        <span className="inline-flex items-center gap-1.5 text-sm text-ink/55">
+                                        <span className="inline-flex items-center gap-1.5 text-sm text-ink/65">
                                             <CalendarDays className="h-4 w-4" /> Écrit pour le blog depuis {monthYear(stats.since)}
                                         </span>
                                     )}
@@ -98,7 +99,7 @@ export default async function AuthorArchive({ slug, page }: { slug: string; page
             <div className="mx-auto max-w-[1240px] px-6 pb-20 pt-10">
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-10">
                     {/* ─── Colonne principale ─── */}
-                    <main className="min-w-0 space-y-8">
+                    <div className="min-w-0 space-y-8">
                         <section className={`${card} p-5 sm:p-6`}>
                             <h2 className={cardTitle}>
                                 <Activity className="h-5 w-5 text-accent" /> Activité
@@ -108,7 +109,7 @@ export default async function AuthorArchive({ slug, page }: { slug: string; page
                                     <div key={t.label} className="rounded-2xl bg-paper p-4">
                                         <t.icon className={`h-5 w-5 ${t.color}`} />
                                         <p className="mt-2 font-display text-3xl leading-none">{t.value}</p>
-                                        <p className="mt-1 text-xs text-ink/55">{t.label}</p>
+                                        <p className="mt-1 text-xs text-ink/65">{t.label}</p>
                                     </div>
                                 ))}
                             </div>
@@ -117,11 +118,11 @@ export default async function AuthorArchive({ slug, page }: { slug: string; page
                         <section>
                             <h2 className={`${cardTitle} mb-5`}>
                                 <FileText className="h-5 w-5 text-accent" /> Ses articles
-                                <span className="text-base text-ink/45">({list.total})</span>
-                                {list.page > 1 && <span className="ml-auto text-sm font-normal text-ink/50">page {list.page} sur {list.pages}</span>}
+                                <span className="text-base text-ink/65">({list.total})</span>
+                                {list.page > 1 && <span className="ml-auto text-sm font-normal text-ink/65">page {list.page} sur {list.pages}</span>}
                             </h2>
                             {list.items.length === 0 ? (
-                                <div className="rounded-3xl border border-dashed border-ink/15 bg-white p-10 text-center text-ink/60">Aucun article publié pour l&apos;instant.</div>
+                                <div className="rounded-3xl border border-dashed border-ink/15 bg-white p-10 text-center text-ink/65">Aucun article publié pour l&apos;instant.</div>
                             ) : (
                                 <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2">
                                     {list.items.map((p, i) => (
@@ -131,7 +132,7 @@ export default async function AuthorArchive({ slug, page }: { slug: string; page
                             )}
                             <Pagination base={`/author/${a.slug}/`} page={list.page} pages={list.pages} />
                         </section>
-                    </main>
+                    </div>
 
                     {/* ─── Colonne latérale ─── */}
                     <aside className="min-w-0 space-y-6">
@@ -146,7 +147,7 @@ export default async function AuthorArchive({ slug, page }: { slug: string; page
                                             <Link href={`/category/${c.slug}/`} className="flex items-center gap-3 rounded-xl px-2 py-2 text-[15px] font-semibold hover:bg-paper">
                                                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.color }} />
                                                 <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                                                <span className="rounded-full bg-paper2 px-2 py-0.5 text-xs text-ink/60">{c.count}</span>
+                                                <span className="rounded-full bg-paper2 px-2 py-0.5 text-xs text-ink/65">{c.count}</span>
                                             </Link>
                                         </li>
                                     ))}

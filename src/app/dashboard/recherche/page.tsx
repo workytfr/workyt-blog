@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileText, Images, Users } from "lucide-react";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can, ROLE_LABELS, type Role } from "@/lib/roles";
 import { connectDB } from "@/lib/db";
 import { relativeDate } from "@/lib/format";
@@ -14,7 +14,7 @@ type Props = { searchParams: Promise<{ q?: string }> };
 
 /** Recherche globale de la rédaction (§ 13.1) : articles, images, personnes */
 export default async function SearchPage({ searchParams }: Props) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     const q = ((await searchParams).q ?? "").trim().slice(0, 100);
     const role = session.user.role;
     await connectDB();

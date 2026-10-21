@@ -138,6 +138,8 @@ PostSchema.index({ authors: 1, status: 1, publishedAt: -1 });
 PostSchema.index({ status: 1, scheduledAt: 1 });
 PostSchema.index({ "modules.data.guest.memberId": 1 });
 PostSchema.index({ contributors: 1, status: 1, publishedAt: -1 });
+// Les plus lus (accueil, colonne)
+PostSchema.index({ status: 1, views: -1 });
 PostSchema.index({ title: "text", excerpt: "text" }, { default_language: "french" });
 
 export type PostDoc = InferSchemaType<typeof PostSchema> & { _id: mongoose.Types.ObjectId };

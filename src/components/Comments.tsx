@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession } from "./Providers";
 import { Clock, Flag, Heart, Loader2, MessageCircle, Pencil, Reply, Trash2 } from "lucide-react";
 import type { CommentView } from "@/lib/comments";
 import { COMMENT_MAX } from "@/lib/commentRules";
@@ -126,7 +126,7 @@ export default function Comments({ postId, slug, initial }: { postId: string; sl
                         </Link>
                     </div>
                 )}
-                <p className="mt-2 px-1 text-[11.5px] text-ink/45">Reste bienveillant·e. Un lien externe ou des coordonnées (e-mail, téléphone, pseudo) font passer le commentaire en modération.</p>
+                <p className="mt-2 px-1 text-[11.5px] text-ink/65">Reste bienveillant·e. Un lien externe ou des coordonnées (e-mail, téléphone, pseudo) font passer le commentaire en modération.</p>
                 {notice && (
                     <p role="status" className={`mt-3 rounded-2xl px-4 py-3 text-sm ${notice.tone === "error" ? "bg-red-50 text-red-700" : notice.tone === "wait" ? "bg-sun/20" : "bg-leaf/15"}`}>
                         {notice.text}
@@ -136,7 +136,7 @@ export default function Comments({ postId, slug, initial }: { postId: string; sl
 
             {/* Liste */}
             {top.length === 0 ? (
-                <p className="mt-8 text-sm text-ink/50">Personne n&apos;a encore commenté. À toi de lancer la discussion !</p>
+                <p className="mt-8 text-sm text-ink/65">Personne n&apos;a encore commenté. À toi de lancer la discussion !</p>
             ) : (
                 <ol className="mt-8 space-y-6">
                     {top.map((c) => (
@@ -184,10 +184,10 @@ function CommentForm({ placeholder, submitLabel, initial = "", autoFocus, onSubm
                 rows={3}
                 autoFocus={autoFocus}
                 aria-label={placeholder}
-                className="w-full resize-y rounded-2xl border border-ink/10 bg-paper px-4 py-3 text-[15px] outline-none transition focus:border-accent"
+                className="w-full resize-y rounded-2xl border border-ink/10 bg-paper px-4 py-3 text-[15px] outline-none transition focus:border-accent focus-visible:ring-2 focus-visible:ring-accentdark"
             />
             <div className="mt-2 flex items-center justify-end gap-2">
-                <span className={`mr-auto text-[11px] ${text.length > COMMENT_MAX - 100 ? "text-accentdark" : "text-ink/40"}`}>
+                <span className={`mr-auto text-[11px] ${text.length > COMMENT_MAX - 100 ? "text-accentdark" : "text-ink/65"}`}>
                     {text.length}/{COMMENT_MAX}
                 </span>
                 {onCancel && (
@@ -245,7 +245,7 @@ function CommentItem({
     }, [c.editableUntil]);
     const minutesLeft = c.editableUntil && now ? Math.ceil((c.editableUntil - now) / 60_000) : 0;
 
-    if (c.status === "deleted") return <p className="rounded-[20px] bg-paper2/60 px-5 py-3 text-sm italic text-ink/45">Commentaire supprimé.</p>;
+    if (c.status === "deleted") return <p className="rounded-[20px] bg-paper2/60 px-5 py-3 text-sm italic text-ink/65">Commentaire supprimé.</p>;
 
     const pending = c.status === "pending";
     return (
@@ -254,9 +254,9 @@ function CommentItem({
                 {/* eslint-disable-next-line @next/next/no-img-element -- avatars workyt.fr ou Blobatar */}
                 <img src={c.avatar} alt="" className="h-9 w-9 rounded-full bg-paper2 object-cover" />
                 <span className="font-semibold">{c.name}</span>
-                {c.badge === "auteur" && <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-white">Auteur</span>}
+                {c.badge === "auteur" && <span className="rounded-full bg-accentdark px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-white">Auteur</span>}
                 {c.badge === "redaction" && <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-white">Rédaction</span>}
-                <time dateTime={c.createdAt} className="text-xs text-ink/45">
+                <time dateTime={c.createdAt} className="text-xs text-ink/65">
                     {formatDate(c.createdAt)} à {formatTime(c.createdAt)}
                     {c.edited && " · modifié"}
                 </time>
@@ -274,7 +274,7 @@ function CommentItem({
                 <p className="mt-2.5 whitespace-pre-line break-words text-[15px] leading-relaxed text-ink/85">{c.text}</p>
             )}
             {!editing && (
-                <footer className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-ink/55">
+                <footer className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-ink/65">
                     {!pending &&
                         (logged && !c.mine ? (
                             <button type="button" onClick={onLike} aria-pressed={c.liked} className={`inline-flex items-center gap-1 transition hover:text-ink ${c.liked ? "text-accentdark" : ""}`}>
@@ -305,7 +305,7 @@ function CommentItem({
                         </button>
                     )}
                     {logged && !c.mine && !pending && (
-                        <button type="button" onClick={onReport} className="ml-auto inline-flex items-center gap-1 text-ink/40 hover:text-red-600" title="Signaler à la modération">
+                        <button type="button" onClick={onReport} className="ml-auto inline-flex items-center gap-1 text-ink/65 hover:text-red-600" title="Signaler à la modération">
                             <Flag className="h-3.5 w-3.5" /> Signaler
                         </button>
                     )}

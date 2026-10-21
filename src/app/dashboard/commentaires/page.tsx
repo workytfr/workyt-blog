@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Flag, MessageSquareWarning } from "lucide-react";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { moderationQueue } from "@/lib/comments";
 import { relativeDate } from "@/lib/format";
@@ -19,7 +19,7 @@ type View = (typeof VIEWS)[number][0];
  * commentaires avec un lien ou des coordonnées, commentaires signalés.
  */
 export default async function CommentsModerationPage({ searchParams }: { searchParams: Promise<{ vue?: string }> }) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "comment.moderate")) notFound();
     const asked = (await searchParams).vue;
     const vue: View = VIEWS.find(([k]) => k === asked)?.[0] ?? "pending";

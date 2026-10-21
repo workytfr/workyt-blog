@@ -1,11 +1,11 @@
-import { currentActor } from "@/lib/session";
+import { requireDashboardActor } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { listLinks } from "@/lib/affiliate";
 import LinkManager from "./LinkManager";
 
 /** Gestionnaire de liens affiliés (§ 9.1) */
 export default async function LinksPage() {
-    const actor = (await currentActor())!;
+    const actor = await requireDashboardActor();
     const links = await listLinks(actor);
     return (
         <main className="min-w-0 flex-1 px-10 py-12">

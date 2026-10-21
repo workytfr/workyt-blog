@@ -1,4 +1,5 @@
 import { blobatar } from "blobatar";
+import { decodeSlug } from "@/lib/slug";
 
 /**
  * GET /api/avatar/<graine>/?size=128 — Blobatar (même bibliothèque et même
@@ -8,7 +9,7 @@ import { blobatar } from "blobatar";
 const SEED = /^[\p{L}\p{N}_.-]{1,128}$/u;
 
 export async function GET(req: Request, { params }: { params: Promise<{ seed: string }> }) {
-    const seed = decodeURIComponent((await params).seed);
+    const seed = decodeSlug((await params).seed);
     if (!SEED.test(seed)) return new Response("Graine invalide", { status: 400 });
     const raw = Number.parseInt(new URL(req.url).searchParams.get("size") || "128", 10);
     const size = Number.isFinite(raw) ? Math.min(512, Math.max(32, raw)) : 128;

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { documentImages, documentText, documentToHtml } from "../src/editor/html";
+import { documentImages, documentText, documentToHtml, isSafeUrl, withSafeUrls } from "../src/editor/html";
 import { renderArticle, renderPostHtml } from "../src/lib/render";
 import { checkCredit } from "../src/lib/licenses";
 
@@ -96,4 +96,27 @@ test("sommaire : ancres sur les titres, carte avant le premier titre à partir d
     assert.equal(short.toc.length, 0);
     assert.doesNotMatch(short.html, /wk-toc/, "pas de sommaire sous 3 titres");
     assert.doesNotMatch(renderPostHtml(src), /wk-toc/, "pas de carte dans le flux RSS");
+});
+
+test("adresses dangereuses retirées du document (liens, contenus intégrés)", () => {
+    assert.ok(isSafeUrl("https://workyt.fr/"));
+    assert.ok(isSafeUrl("/une-page/"));
+    assert.ok(isSafeUrl("#titre"));
+    assert.ok(isSafeUrl("mailto:contact@workyt.fr"));
+    assert.ok(!isSafeUrl("javascript:alert(1)"));
+    assert.ok(!isSafeUrl(" JaVa	Script:alert(1)"));
+    assert.ok(!isSafeUrl("data:text/html,<script>alert(1)</script>"));
+
+    const doc = withSafeUrls({
+        type: "doc",
+        content: [
+            { type: "socialEmbed", attrs: { provider: "spotify", url: "javascript:alert(1)" } },
+            { type: "paragraph", content: [{ type: "text", text: "lien", marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }, { type: "bold" }] }] },
+            { type: "paragraph", content: [{ type: "text", text: "ok", marks: [{ type: "link", attrs: { href: "https://workyt.fr/" } }] }] },
+        ],
+    });
+    assert.equal(doc.content![0].attrs!.url, "");
+    assert.equal(doc.content![1].content![0].marks![0].attrs!.href, "");
+    assert.equal(doc.content![2].content![0].marks![0].attrs!.href, "https://workyt.fr/");
+    assert.doesNotMatch(documentToHtml({ type: "doc", content: [{ type: "socialEmbed", attrs: { provider: "spotify", url: "javascript:alert(1)" } }] }), /href="javascript:/);
 });

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Clock, MessageSquare, PenLine } from "lucide-react";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { connectDB } from "@/lib/db";
 import { relativeDate } from "@/lib/format";
@@ -13,7 +13,7 @@ import "@/models/Author";
 
 /** File de correction (§ 13) : articles en attente, et mes corrections en cours */
 export default async function CorrectionPage() {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "post.correct")) notFound();
     await connectDB();
     const me = await Member.findById(session.user.memberId).select("author").lean();

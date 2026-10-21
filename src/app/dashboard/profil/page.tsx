@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { currentActor } from "@/lib/session";
+import { requireDashboardActor } from "@/lib/dashboardAccess";
 import { ensureAuthor } from "@/lib/posts";
 import { connectDB } from "@/lib/db";
 import { avatarSrc } from "@/lib/avatar";
@@ -9,7 +9,7 @@ import ProfileForm from "./ProfileForm";
 
 /** Mon profil d'auteur : la bio et la fonction affichées sous mes articles et sur ma page auteur */
 export default async function ProfilePage() {
-    const actor = (await currentActor())!;
+    const actor = await requireDashboardActor();
     await connectDB();
     const a = await Author.findById(await ensureAuthor(actor.memberId)).lean();
     return (

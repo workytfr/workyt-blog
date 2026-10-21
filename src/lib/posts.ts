@@ -2,9 +2,10 @@ import "server-only";
 import mongoose from "mongoose";
 import type { JSONContent } from "@tiptap/core";
 import { connectDB } from "./db";
-import { slugify } from "./slug";
+import { revalidatePath } from "next/cache";
+import { slugFollowsTitle, slugify } from "./slug";
 import { can, type Role } from "./roles";
-import { documentImages, documentText, documentToHtml } from "@/editor/html";
+import { documentImages, documentText, documentToHtml, withSafeUrls } from "@/editor/html";
 import { readingMinutes } from "./render";
 import { invalidateRedirects, normalizePath } from "./redirects";
 import Post from "@/models/Post";
@@ -46,8 +47,13 @@ const RESERVED = new Set(["category", "tag", "author", "page", "feed", "search",
 export async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
     const root = RESERVED.has(base) ? `${base}-article` : base;
     let candidate = root;
+    // Ses propres anciennes adresses (redirigées vers lui) restent à lui : revenir à « a » après « a → b » ne donne pas « a-2 »
+    const own = excludeId ? (await Post.findById(excludeId).select("slug").lean())?.slug : undefined;
     for (let i = 2; i < 200; i++) {
-        const taken = await Post.exists({ slug: candidate, ...(excludeId ? { _id: { $ne: excludeId } } : {}) });
+        // Une adresse redirigée (ancien article renommé) est prise aussi : le proxy redirige avant d'afficher la page
+        const taken =
+            (await Post.exists({ slug: candidate, ...(excludeId ? { _id: { $ne: excludeId } } : {}) })) ||
+            (await Redirect.exists({ from: normalizePath(`/${candidate}/`), ...(own ? { to: { $ne: `/${own}/` } } : {}) }));
         if (!taken) return candidate;
         candidate = `${root}-${i}`;
     }
@@ -139,10 +145,37 @@ export interface SaveInput {
     isPillar?: boolean;
 }
 
-const isId = (v: unknown): v is string => typeof v === "string" && mongoose.isValidObjectId(v);
+/** Identifiant MongoDB valide (paramètre d'URL, champ envoyé) */
+export const isId = (v: unknown): v is string => typeof v === "string" && mongoose.isValidObjectId(v);
+
+/**
+ * Pages publiques d'un article à régénérer : l'article (et ses anciennes
+ * adresses), l'accueil, ses rubriques, étiquettes et auteurs, pages suivantes comprises.
+ */
+export async function revalidatePostPages(post: { slug: string; categories?: unknown[]; tags?: unknown[]; authors?: unknown[]; contributors?: unknown[] }, oldSlugs: string[] = []) {
+    const [cats, tags, authors] = await Promise.all([
+        Category.find({ _id: { $in: post.categories ?? [] } }).select("slug").lean(),
+        Tag.find({ _id: { $in: post.tags ?? [] } }).select("slug").lean(),
+        Author.find({ _id: { $in: [...(post.authors ?? []), ...(post.contributors ?? [])] } }).select("slug").lean(),
+    ]);
+    const paths = [
+        ...[post.slug, ...oldSlugs].map((s) => `/${s}`),
+        "/",
+        ...cats.map((c) => `/category/${c.slug}`),
+        ...tags.map((t) => `/tag/${t.slug}`),
+        ...authors.map((a) => `/author/${a.slug}`),
+    ];
+    try {
+        for (const p of new Set(paths)) revalidatePath(p);
+        // Pages 2, 3… des listes : l'article y décale tout le monde (motifs de route, d'où « page »)
+        for (const pattern of ["/(public)/page/[n]", "/(public)/category/[slug]/page/[n]", "/(public)/tag/[slug]/page/[n]", "/(public)/author/[slug]/page/[n]"]) revalidatePath(pattern, "page");
+    } catch {
+        /* hors requête (tests, scripts) */
+    }
+}
 
 /** Enregistre les champs envoyés (enregistrement automatique de l'éditeur) */
-export async function savePost(id: string, rawInput: SaveInput, actor: Actor) {
+export async function savePost(id: string, rawInput: SaveInput, actor: Actor, opts: { skipSession?: boolean } = {}) {
     let input = rawInput;
     await connectDB();
     if (!isId(id)) throw new PostError("Article introuvable.", 404);
@@ -155,13 +188,16 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor) {
     if (mode === "suggest") input = { contentJson: input.contentJson };
 
     // Une version par séance d'édition : l'état d'avant, dès qu'une autre personne s'y met, après une étape ou après 30 min
-    if ((input.contentJson || typeof input.title === "string") && post.contentJson) {
+    if (!opts.skipSession && (input.contentJson || typeof input.title === "string") && post.contentJson) {
         const last = await Revision.findOne({ post: post._id }).sort({ createdAt: -1 }).select("kind label member createdAt").lean();
         if (needsSession(last, actor.memberId)) await saveRevision(post, "session", sessionLabel(actor.name), actor);
     }
 
     // Adresse automatique (« brouillon-… » ou tirée du titre) : elle suit le titre tant que l'article n'a jamais été publié
-    const autoSlug = !post.publishedAt && (post.slug.startsWith("brouillon-") || post.slug.replace(/-\d+$/, "") === slugify(post.title));
+    const autoSlug = !post.publishedAt && (post.slug.startsWith("brouillon-") || slugFollowsTitle(post.slug, post.title));
+    const slugBefore = post.slug;
+    const categoriesBefore = [...post.categories];
+    const tagsBefore = [...post.tags];
     if (typeof input.title === "string") post.title = input.title.trim().slice(0, 200) || "Sans titre";
     if (autoSlug && typeof input.title === "string" && typeof input.slug !== "string" && post.title !== "Sans titre") {
         post.slug = await uniqueSlug(slugify(post.title), id);
@@ -173,13 +209,12 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor) {
         if (wanted !== post.slug) {
             const next = await uniqueSlug(wanted, id);
             if (post.status === "published" || post.publishedAt) {
-                await Redirect.findOneAndUpdate(
-                    { from: normalizePath(`/${post.slug}/`) },
-                    { to: `/${next}/`, status: 301, source: "slug-change" },
-                    { upsert: true }
-                );
-                // Une ancienne redirection vers la nouvelle adresse ferait une boucle : on la retire
+                const from = normalizePath(`/${post.slug}/`);
+                // Une ancienne redirection depuis la nouvelle adresse ferait une boucle : on la retire
                 await Redirect.deleteOne({ from: normalizePath(`/${next}/`) });
+                await Redirect.findOneAndUpdate({ from }, { to: `/${next}/`, status: 301, source: "slug-change" }, { upsert: true });
+                // Pas de chaîne A → B → C : ce qui menait à l'ancienne adresse mène directement à la nouvelle
+                await Redirect.updateMany({ to: from }, { $set: { to: `/${next}/` } });
                 invalidateRedirects();
             }
             post.slug = next;
@@ -189,11 +224,12 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor) {
     if (typeof input.excerpt === "string") post.excerpt = input.excerpt.trim().slice(0, 400);
 
     if (input.contentJson && input.contentJson.type === "doc") {
-        post.contentJson = input.contentJson;
+        const doc = withSafeUrls(input.contentJson);
+        post.contentJson = doc;
         // Le HTML public ne montre jamais les suggestions en cours ni les commentaires
-        post.contentHtml = documentToHtml(withoutSuggestions(input.contentJson));
+        post.contentHtml = documentToHtml(withoutSuggestions(doc));
         post.readingMinutes = readingMinutes(post.contentHtml);
-        post.pendingSuggestions = documentSuggestions(input.contentJson).length;
+        post.pendingSuggestions = documentSuggestions(doc).length;
     }
 
     if (Array.isArray(input.categories)) {
@@ -253,7 +289,16 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor) {
 
     if (post.status === "published") post.modifiedAt = new Date();
     if (post.lock?.member && String(post.lock.member) === actor.memberId) post.set("lock.at", new Date());
+    // Le mode d'édition a été décidé sur ce statut : une étape du circuit passée entre-temps → 409
+    post.$where = { status: post.status };
     await post.save();
+    // Article en ligne : sa page et les listes où il figure (rubriques ou étiquettes retirées comprises)
+    if (post.status === "published") {
+        await revalidatePostPages(
+            { slug: post.slug, authors: post.authors, contributors: post.contributors, categories: [...categoriesBefore, ...post.categories], tags: [...tagsBefore, ...post.tags] },
+            slugBefore !== post.slug ? [slugBefore] : []
+        );
+    }
     return { slug: post.slug, savedAt: new Date().toISOString(), readingMinutes: post.readingMinutes, pendingSuggestions: post.pendingSuggestions, seoScore: post.seo?.score ?? null, ...(input.modules !== undefined ? { modules: post.modules } : {}) };
 }
 

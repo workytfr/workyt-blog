@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { adjacentPosts, getPostBySlug, relatedPosts } from "@/lib/content";
 import { postMetadata } from "@/lib/seo";
 import PostArticle from "@/components/PostArticle";
+import { decodeSlug } from "@/lib/slug";
 
 // Page en cache, régénérée toutes les 5 min (et à la publication)
 export const revalidate = 300;
@@ -15,17 +16,17 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
-    const post = await getPostBySlug(decodeURIComponent(slug));
+    const post = await getPostBySlug(decodeSlug(slug));
     return post ? postMetadata(post) : { title: "Article introuvable", robots: { index: false } };
 }
 
 export default async function PostPage({ params }: Props) {
     const { slug } = await params;
-    const post = await getPostBySlug(decodeURIComponent(slug));
+    const post = await getPostBySlug(decodeSlug(slug));
     if (!post) {
         // « /GOLDEN-GLOBES-2026/ » : WordPress renvoyait vers l'adresse en minuscules, on fait de même
-        const lower = decodeURIComponent(slug).toLowerCase();
-        if (lower !== decodeURIComponent(slug) && (await getPostBySlug(lower))) permanentRedirect(`/${encodeURIComponent(lower)}/`);
+        const lower = decodeSlug(slug).toLowerCase();
+        if (lower !== decodeSlug(slug) && (await getPostBySlug(lower))) permanentRedirect(`/${encodeURIComponent(lower)}/`);
         notFound();
     }
     const [{ previous, next }, related] = await Promise.all([adjacentPosts(post), relatedPosts(post, 4)]);

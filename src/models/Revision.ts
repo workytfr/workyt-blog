@@ -16,6 +16,8 @@ const RevisionSchema = new Schema(
         /** Absent quand le texte est identique à la version `sameAs` (pas de copie en double) */
         contentJson: { type: Schema.Types.Mixed },
         sameAs: { type: Schema.Types.ObjectId, ref: "Revision" },
+        /** Modules de l'article (recette, avis…) ; absent des versions plus anciennes */
+        modules: { type: Schema.Types.Mixed },
         /** Empreinte du titre et du texte : repère les versions identiques */
         hash: { type: String },
         /** « Envoyé en correction », « Avant les modifications de Camille », « Avant restauration »… */

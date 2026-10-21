@@ -17,7 +17,7 @@ const short = (iso: string) => new Intl.DateTimeFormat("fr-FR", { day: "numeric"
 
 function Meta({ post, light = false }: { post: PostCardView; light?: boolean }) {
     return (
-        <p className={`flex flex-wrap items-center gap-x-2 text-[11.5px] ${light ? "text-white/80" : "text-ink/55"}`}>
+        <p className={`flex flex-wrap items-center gap-x-2 text-[11.5px] ${light ? "text-white/80" : "text-ink/65"}`}>
             {post.primaryCategory && (
                 <span>
                     Rubrique · <b className={light ? "text-white" : "text-ink"}>{post.primaryCategory.name}</b>
@@ -57,8 +57,8 @@ export default function Bento({ posts, corner, mirror = false, priority = true }
         <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[300px_230px] 2xl:grid-rows-[370px_280px] 2xl:gap-5">
             {/* 1. Grande carte photo, titre dans l'encoche */}
             <article className={`group relative min-h-[420px] overflow-hidden rounded-[30px] bg-paper2 ${at.main}`}>
-                {main.featuredImage && <Image src={main.featuredImage.url} alt={main.featuredImage.alt} fill priority={priority} sizes="(min-width: 1536px) 660px, (min-width: 1024px) 520px, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />}
-                <span className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/80 text-accent backdrop-blur" title={mirror ? "Nouveau" : "À la une"}>
+                {main.featuredImage && <Image src={main.featuredImage.url} alt={main.featuredImage.alt} fill preload={priority} sizes="(min-width: 1536px) 660px, (min-width: 1024px) 520px, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />}
+                <span className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/80 text-accent backdrop-blur" role="img" aria-label={mirror ? "Nouveau" : "À la une"} title={mirror ? "Nouveau" : "À la une"}>
                     {mirror ? <Sparkles className="h-5 w-5" /> : <Flame className="h-5 w-5" />}
                 </span>
                 {main.featuredImage && <CreditBadge image={main.featuredImage} className="!bottom-auto !top-4 !right-4" />}
@@ -112,10 +112,10 @@ export default function Bento({ posts, corner, mirror = false, priority = true }
                     )}
                     <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, rgb(var(${portraitBg})), rgb(var(${portraitBg}) / 0.7), transparent)` }} />
                     <div className="relative p-5">
-                        <p className="text-[11.5px] text-ink/60">
+                        <p className="text-[11.5px] text-ink/65">
                             Rubrique · <b className="text-ink">{portrait.primaryCategory?.name}</b>
                         </p>
-                        <p className="mt-0.5 text-[11px] text-ink/50">{formatDate(portrait.publishedAt)}</p>
+                        <p className="mt-0.5 text-[11px] text-ink/65">{formatDate(portrait.publishedAt)}</p>
                         <h2 className="mt-2 font-display text-[22px] leading-[1.08]">
                             <Link href={`/${portrait.slug}/`} className="after:absolute after:inset-0">
                                 {portrait.title}
@@ -180,7 +180,7 @@ export function OlderCorner({ total, href }: { total: number; href: string }) {
         <>
             <p className="eyebrow">Les archives</p>
             <p className="mt-2 font-display text-[44px] leading-none">{total}</p>
-            <p className="text-sm text-ink/60">articles publiés depuis le début du blog</p>
+            <p className="text-sm text-ink/65">articles publiés depuis le début du blog</p>
             <div className="mt-auto flex items-center justify-between pt-4">
                 <span className="font-display text-[19px] leading-tight">Articles plus anciens</span>
                 <Link href={href} className="grid h-12 w-12 place-items-center rounded-full bg-white ring-4 ring-sun/60 transition hover:bg-ink hover:text-white" aria-label="Voir les articles plus anciens">

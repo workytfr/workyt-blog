@@ -3,10 +3,10 @@ import Script from "next/script";
 import { Funnel_Display, Montserrat } from "next/font/google";
 import "./globals.css";
 import { SITE, pageTitle } from "@/lib/site";
-import Providers from "@/components/Providers";
 import { getSettings } from "@/lib/settings";
 import { THEME_SCRIPT } from "@/lib/theme";
 import { ogCard } from "@/lib/seo";
+import ReplayConsent from "@/components/ReplayConsent";
 
 // Polices de Workyt, et seulement elles
 const funnelDisplay = Funnel_Display({ subsets: ["latin"], variable: "--font-funnel-display", display: "swap" });
@@ -46,15 +46,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
             </head>
             <body className="min-h-screen bg-paper font-sans text-ink antialiased">
-                <Providers>
-                    {children}
-                </Providers>
+                {/* Pas de SessionProvider global : la session n'est lue que par le bouton de compte et les commentaires */}
+                {children}
                 {/* Mesure d'audience Umami (sans cookie) : stats.youss.dev */}
                 {umamiUrl && umamiId && (
                     <>
                         <Script src={`${umamiUrl}/script.js`} data-website-id={umamiId} data-performance="true" strategy="afterInteractive" />
-                        {/* Enregistrement des sessions, comme sur l'ancien WordPress */}
-                        <Script src={`${umamiUrl}/recorder.js`} data-website-id={umamiId} strategy="afterInteractive" />
+                        {/* Enregistrement des sessions : seulement avec l'accord du lecteur (bandeau), jamais dans la rédaction */}
+                        <ReplayConsent src={`${umamiUrl}/recorder.js`} websiteId={umamiId} />
                     </>
                 )}
             </body>

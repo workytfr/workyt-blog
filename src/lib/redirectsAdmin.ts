@@ -70,6 +70,8 @@ export async function saveRedirect(actor: Actor, id: string | null, input: Recor
     } else {
         await Redirect.create({ from, to, status, source: "manual" });
     }
+    // Pas de chaîne non plus en amont : ce qui menait à cette adresse mène directement à sa destination
+    if (to) await Redirect.updateMany({ to: from, from: { $ne: normalizePath(to) } }, { $set: { to } });
     // L'adresse ne sera plus en 404
     await NotFoundHit.deleteOne({ path: from });
     invalidateRedirects();
@@ -94,9 +96,15 @@ export async function ignore404(actor: Actor, id: string) {
     if (mongoose.isValidObjectId(id)) await NotFoundHit.deleteOne({ _id: id });
 }
 
+/** Plafonds du journal : longueur d'une adresse, nouvelles adresses par 24 h (un robot ne remplit pas la base) */
+const MAX_404_PATH = 300;
+const MAX_NEW_404_PER_DAY = 500;
+
 /** Une visite sur une page introuvable (appelé par la page 404, sans donnée personnelle) */
 export async function record404(path: string, referrer: string) {
-    const p = normalizePath(path.slice(0, 300));
+    // Adresse trop longue : du bruit, pas une ancienne page
+    if (path.length > MAX_404_PATH) return;
+    const p = normalizePath(path);
     // Pas de bruit : fichiers techniques, dashboard, robots qui sondent WordPress
     if (/^\/(dashboard|api|_next)\//.test(p) || /\.(php|env|xml|txt|ico|png|jpe?g|gif|svg|js|css|map)\/?$/.test(p) || p.includes("wp-content") || p.includes("wp-includes")) return;
     await connectDB();
@@ -106,5 +114,11 @@ export async function record404(path: string, referrer: string) {
     } catch {
         /* rien */
     }
-    await NotFoundHit.updateOne({ path: p }, { $inc: { hits: 1 }, $set: { lastAt: new Date(), ...(ref ? { referrer: ref } : {}) } }, { upsert: true });
+    const update = { $inc: { hits: 1 }, $set: { lastAt: new Date(), ...(ref ? { referrer: ref } : {}) } };
+    const known = await NotFoundHit.updateOne({ path: p }, update);
+    if (known.matchedCount) return;
+    // Nouvelle adresse : l'_id porte sa date de création, on compte celles des dernières 24 h
+    const since = mongoose.Types.ObjectId.createFromTime(Math.floor(Date.now() / 1000) - 86_400);
+    if ((await NotFoundHit.countDocuments({ _id: { $gte: since } })) >= MAX_NEW_404_PER_DAY) return;
+    await NotFoundHit.updateOne({ path: p }, update, { upsert: true });
 }

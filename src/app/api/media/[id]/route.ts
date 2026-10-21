@@ -22,6 +22,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await connectDB();
     const media = await Media.findById(id);
     if (!media) return NextResponse.json({ success: false, error: "Image introuvable." }, { status: 404 });
+    // Un rédacteur ne modifie que ses images ; correcteurs et rédaction en chef, toutes (vérification des droits)
+    const mine = !!media.uploadedBy && String(media.uploadedBy) === actor.memberId;
+    if (!mine && !can(actor.role, "media.manageAll") && !can(actor.role, "post.correct")) {
+        return NextResponse.json({ success: false, error: "Cette image a été ajoutée par quelqu'un d'autre." }, { status: 403 });
+    }
 
     if (typeof body.alt === "string") media.alt = body.alt.trim().slice(0, 300);
     if (body.credit && typeof body.credit === "object") {

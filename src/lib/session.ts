@@ -1,4 +1,5 @@
 import "server-only";
+import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import { getBlogSession } from "./auth";
 import type { Actor } from "./posts";
@@ -14,6 +15,10 @@ export async function currentActor(): Promise<Actor | null> {
 /** Réponse JSON d'erreur, avec le détail des points bloquants le cas échéant */
 export function errorResponse(error: unknown) {
     if (error instanceof PostError) return NextResponse.json({ success: false, error: error.message, issues: error.issues }, { status: error.status });
+    // Article modifié par quelqu'un d'autre entre la lecture et l'écriture (statut changé, tableaux réécrits)
+    if (error instanceof mongoose.Error.VersionError || error instanceof mongoose.Error.DocumentNotFoundError) {
+        return NextResponse.json({ success: false, error: "L'article a été modifié entre-temps. Recharge la page." }, { status: 409 });
+    }
     console.error("[api]", error);
     return NextResponse.json({ success: false, error: "Erreur serveur." }, { status: 500 });
 }

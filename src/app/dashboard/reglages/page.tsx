@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { getSettings } from "@/lib/settings";
 import SettingsForm from "./SettingsForm";
 
 /** Réglages du blog (§ 13, Admin) */
 export default async function SettingsPage() {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "settings.manage")) notFound();
     const settings = await getSettings();
     return (

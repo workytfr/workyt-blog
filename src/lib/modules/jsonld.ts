@@ -1,9 +1,9 @@
-import type { ArticleModule, FavoriteKind, ModuleImage, SourceItem } from "./types";
+import type { ArticleModule, ModuleImage, SourceItem } from "./types";
 
 /**
  * Données structurées des modules (§ 9) : Recipe, Product + Review,
- * Review + Book, Review court pour les coups de cœur, et `citation` de
- * l'Article pour les sources. Fonctions pures : testées sans serveur.
+ * Review + Book (seulement avec une note), et `citation` de l'Article pour
+ * les sources. Fonctions pures : testées sans serveur.
  */
 
 type Json = Record<string, unknown>;
@@ -24,6 +24,8 @@ const people = (ctx: Ctx) => ctx.authors.map((a) => ({ "@type": "Person", name: 
 const rating = (value: number, best: number) => ({ "@type": "Rating", ratingValue: value, bestRating: best, worstRating: 0 });
 const notes = (items: string[]) => (items.length ? { "@type": "ItemList", itemListElement: items.map((name, i) => ({ "@type": "ListItem", position: i + 1, name })) } : undefined);
 const clean = <T,>(o: T): T => JSON.parse(JSON.stringify(o));
+/** Note utilisable par Google : un nombre dans ]0, max] (0 = module pas encore noté) */
+const validScore = (value: number, best: number) => Number.isFinite(value) && value > 0 && value <= best;
 
 const DIETS: Record<string, string> = {
     végétarien: "https://schema.org/VegetarianDiet",
@@ -33,19 +35,6 @@ const DIETS: Record<string, string> = {
     halal: "https://schema.org/HalalDiet",
     casher: "https://schema.org/KosherDiet",
     "sans lactose": "https://schema.org/LowLactoseDiet",
-};
-
-const THING: Record<FavoriteKind, string> = {
-    livre: "Book",
-    film: "Movie",
-    série: "TVSeries",
-    appli: "SoftwareApplication",
-    jeu: "VideoGame",
-    lieu: "Place",
-    produit: "Product",
-    site: "WebSite",
-    podcast: "PodcastSeries",
-    autre: "Thing",
 };
 
 export function moduleJsonLd(m: ArticleModule, ctx: Ctx): Json | null {
@@ -79,29 +68,36 @@ export function moduleJsonLd(m: ArticleModule, ctx: Ctx): Json | null {
             const price = Number.parseFloat(d.price.replace(",", ".").replace(/[^0-9.]/g, ""));
             const tech = m.type === "techReview" ? m.data : null;
             const prod = m.type === "productReview" ? m.data : null;
+            // Google refuse un Product sans offre ni avis noté : rien plutôt qu'une erreur dans la Search Console
+            const offer = Number.isFinite(price) && price > 0;
+            const scored = validScore(d.score, 10);
+            if (!d.product || (!offer && !scored)) return null;
             return clean({
                 "@type": "Product",
                 name: d.product,
                 image: image(d.image, ctx),
                 brand: tech?.brand ? { "@type": "Brand", name: tech.brand } : undefined,
                 model: tech?.model || undefined,
-                offers:
-                    Number.isFinite(price) && price > 0
-                        ? { "@type": "Offer", price: price.toFixed(2), priceCurrency: "EUR", url: prod ? link(prod.link, ctx) : undefined, seller: prod?.merchant ? { "@type": "Organization", name: prod.merchant } : undefined }
-                        : undefined,
-                review: {
-                    "@type": "Review",
-                    author: people(ctx),
-                    datePublished: ctx.datePublished,
-                    reviewRating: rating(d.score, 10),
-                    reviewBody: tech?.verdict || undefined,
-                    positiveNotes: notes(d.pros),
-                    negativeNotes: notes(d.cons),
-                },
+                offers: offer
+                    ? { "@type": "Offer", price: price.toFixed(2), priceCurrency: "EUR", url: prod ? link(prod.link, ctx) : undefined, seller: prod?.merchant ? { "@type": "Organization", name: prod.merchant } : undefined }
+                    : undefined,
+                review: scored
+                    ? {
+                          "@type": "Review",
+                          author: people(ctx),
+                          datePublished: ctx.datePublished,
+                          reviewRating: rating(d.score, 10),
+                          reviewBody: tech?.verdict || undefined,
+                          positiveNotes: notes(d.pros),
+                          negativeNotes: notes(d.cons),
+                      }
+                    : undefined,
             });
         }
         case "bookReview": {
             const b = m.data;
+            // Avis sans note : invalide pour Google, rien n'est émis
+            if (!b.title || !validScore(b.score, 5)) return null;
             return clean({
                 "@type": "Review",
                 itemReviewed: {
@@ -123,20 +119,10 @@ export function moduleJsonLd(m: ArticleModule, ctx: Ctx): Json | null {
                 negativeNotes: notes(b.cons ?? []),
             });
         }
+        // Coups de cœur : pas de note, donc pas de Review valide (Google exige reviewRating, et
+        // refuse les itemReviewed Place, WebSite, Thing…). Le texte reste dans la page.
         case "favorite":
-        case "guestFavorite": {
-            const f = m.data;
-            const guest = m.type === "guestFavorite" ? m.data.guest : null;
-            if (m.type === "guestFavorite" && m.data.status !== "validated") return null;
-            return clean({
-                "@type": "Review",
-                name: `${f.badge} : ${f.name}`,
-                itemReviewed: { "@type": THING[f.kind], name: f.name, image: image(f.image, ctx), url: link(f.link, ctx) },
-                author: guest ? { "@type": "Person", name: guest.name, url: ctx.guestUrl?.(guest.memberId) } : people(ctx),
-                datePublished: ctx.datePublished,
-                reviewBody: f.why,
-            });
-        }
+        case "guestFavorite":
         case "sources":
             return null;
     }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import mongoose from "mongoose";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { connectDB } from "@/lib/db";
 import { actorContext } from "@/lib/posts";
 import { correctorEditor, correctorInfo, correctorOptions, editorState } from "@/lib/review";
@@ -17,7 +17,7 @@ import type { EditorPost } from "@/editor/types";
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     if (!mongoose.isValidObjectId(id)) notFound();
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     await connectDB();
     const post = await Post.findById(id).populate("authors", "name").lean();
     if (!post) notFound();

@@ -35,7 +35,7 @@ export default async function SiteHeader() {
     return (
         <>
             {/* Liens vers Workyt */}
-            <div className="text-[12.5px] text-ink/55">
+            <div className="text-[12.5px] text-ink/65">
                 <div className="mx-auto flex max-w-[1240px] items-center gap-5 px-6 pt-3">
                     <a href={SITE.workytUrl} className="opacity-80 transition hover:opacity-100" title="Workyt">
                         {/* eslint-disable-next-line @next/next/no-img-element -- logo, déjà à la bonne taille */}
@@ -50,12 +50,12 @@ export default async function SiteHeader() {
                     </nav>
                     <div className="ml-auto flex items-center gap-3.5">
                         {socials.map((k) => (
-                            <a key={k} href={social[k]} target="_blank" rel="noopener noreferrer" className="opacity-60 hover:opacity-100" title={SOCIAL_ICONS[k].title}>
+                            <a key={k} href={social[k]} target="_blank" rel="noopener noreferrer" className="hover:text-ink" title={SOCIAL_ICONS[k].title}>
                                 <BrandIcon path={SOCIAL_ICONS[k].path} color="currentColor" size={14} title={SOCIAL_ICONS[k].title} />
                             </a>
                         ))}
-                        <Link href="/feed/" title="Flux RSS" className="hover:text-ink">
-                            <Rss className="h-3.5 w-3.5" />
+                        <Link href="/feed/" title="Flux RSS" aria-label="Flux RSS" className="hover:text-ink">
+                            <Rss className="h-3.5 w-3.5" aria-hidden />
                         </Link>
                     </div>
                 </div>
@@ -97,8 +97,8 @@ export default async function SiteHeader() {
                                 <Search className="h-[18px] w-[18px]" />
                             </summary>
                             <form action="/" role="search" className="absolute right-0 top-12 z-50 flex w-80 gap-2 rounded-full border border-ink/10 bg-white p-1.5 shadow-[0_18px_44px_rgba(26,21,18,.14)]">
-                                <input name="s" autoFocus placeholder="Rechercher un article…" className="min-w-0 flex-1 rounded-full px-4 text-sm outline-none" />
-                                <button className="btn-orange px-4 py-2 text-sm">OK</button>
+                                <input type="search" name="s" autoFocus placeholder="Rechercher un article…" aria-label="Rechercher un article" className="min-w-0 flex-1 rounded-full px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-accentdark" />
+                                <button type="submit" className="btn-orange px-4 py-2 text-sm">Rechercher</button>
                             </form>
                         </details>
 
@@ -128,7 +128,7 @@ export default async function SiteHeader() {
                                     </div>
                                 ))}
                                 <form action="/" role="search" className="mt-3 border-t border-ink/10 px-1 pt-3">
-                                    <input name="s" placeholder="Rechercher un article…" className="w-full rounded-full border border-ink/15 px-4 py-2 text-sm outline-none focus:border-accent" />
+                                    <input type="search" name="s" placeholder="Rechercher un article…" aria-label="Rechercher un article" className="w-full rounded-full border border-ink/15 px-4 py-2 text-sm outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accentdark" />
                                 </form>
                                 <p className="eyebrow mt-3 px-2 pb-1">Workyt</p>
                                 {WORKYT_LINKS.map((l) => (

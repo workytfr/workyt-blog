@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,9 +22,8 @@ export const runtime = "nodejs";
 const JOBS: Record<string, () => Promise<unknown>> = {
     publish: async () => {
         const { publishDue } = await import("@/lib/review");
+        // Pages rafraîchies dans publishDue (article, accueil, rubriques, étiquettes, auteurs)
         const result = await publishDue();
-        for (const slug of result.slugs) revalidatePath(`/${slug}/`);
-        if (result.published) revalidatePath("/");
         return result;
     },
     "check-links": async () => {

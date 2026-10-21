@@ -31,7 +31,7 @@ export function ScoreBadge({ value, max, size = 84, label = "Note" }: { value: n
                     <span className="font-display" style={{ fontSize: size * 0.32 }}>
                         {fmt(value)}
                     </span>
-                    <span className="block text-ink/45" style={{ fontSize: size * 0.13 }}>
+                    <span className="block text-ink/65" style={{ fontSize: size * 0.13 }}>
                         /{max}
                     </span>
                 </span>
@@ -66,7 +66,7 @@ export function CriteriaBars({ criteria, max }: { criteria: Criterion[]; max: nu
                 <li key={c.label}>
                     <div className="flex items-baseline justify-between text-sm">
                         <span className="font-semibold">{c.label}</span>
-                        <span className="text-ink/55">
+                        <span className="text-ink/65">
                             {fmt(c.score)}/{max}
                         </span>
                     </div>

@@ -3,7 +3,10 @@ import { savePost } from "@/lib/posts";
 import { deletePostForever } from "@/lib/review";
 import { currentActor, errorResponse, unauthorized } from "@/lib/session";
 
-/** PATCH /api/posts/<id>/ — enregistre les champs envoyés (enregistrement automatique) */
+/**
+ * PATCH /api/posts/<id>/ — enregistre les champs envoyés (enregistrement automatique).
+ * Article en ligne : savePost régénère ses pages publiques (revalidatePostPages), DELETE aussi.
+ */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const actor = await currentActor();
     if (!actor) return unauthorized();

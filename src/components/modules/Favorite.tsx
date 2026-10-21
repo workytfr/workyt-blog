@@ -31,10 +31,10 @@ export default function Favorite({ data, signer, guest }: { data: FavoriteData; 
             <Heart className="pointer-events-none absolute -right-6 -top-6 h-36 w-36 rotate-12 text-accent/10" fill="currentColor" aria-hidden="true" />
             <div className="relative grid gap-6 sm:grid-cols-[minmax(0,1fr)_200px] sm:items-center">
                 <div className="min-w-0">
-                    <p className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white">
+                    <p className="inline-flex items-center gap-1.5 rounded-full bg-accentdark px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white">
                         <Heart className="h-3.5 w-3.5" fill="currentColor" /> {guest && signer ? `Le coup de cœur de ${signer.name}` : `${data.badge} de la rédaction`}
                     </p>
-                    {KIND_LABEL[data.kind] && <p className="mt-4 text-xs font-semibold uppercase tracking-[0.08em] text-ink/45">{KIND_LABEL[data.kind]}</p>}
+                    {KIND_LABEL[data.kind] && <p className="mt-4 text-xs font-semibold uppercase tracking-[0.08em] text-ink/65">{KIND_LABEL[data.kind]}</p>}
                     <h3 className="mt-1 font-display text-[30px] leading-tight">{data.name}</h3>
                     <blockquote className="mt-3 border-l-[3px] border-accent pl-4 text-[16px] italic leading-relaxed text-ink/80">« {data.why} »</blockquote>
                     <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -48,7 +48,7 @@ export default function Favorite({ data, signer, guest }: { data: FavoriteData; 
                                 Découvrir <ArrowUpRight className="h-4 w-4" />
                             </MerchantLink>
                         )}
-                        {data.link && isAffiliateHref(data.link) && <span className="text-[11px] text-ink/45">lien sponsorisé</span>}
+                        {data.link && isAffiliateHref(data.link) && <span className="text-[11px] text-ink/65">lien sponsorisé</span>}
                     </div>
                 </div>
                 {data.image && <ModuleImage image={data.image} className="aspect-square w-full max-w-[200px] rotate-2 shadow-[0_14px_30px_rgba(26,21,18,.16)]" />}

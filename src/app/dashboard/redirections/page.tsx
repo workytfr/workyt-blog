@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import { list404, listRedirects } from "@/lib/redirectsAdmin";
 import RedirectManager from "./RedirectManager";
@@ -8,7 +8,7 @@ type Props = { searchParams: Promise<{ q?: string }> };
 
 /** Redirections 301 / 302 / 410 et journal des 404 (§ 13, Admin) */
 export default async function RedirectsPage({ searchParams }: Props) {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     if (!can(session.user.role, "redirects.manage")) notFound();
     const { q } = await searchParams;
     const [rows, misses] = await Promise.all([listRedirects(q ?? ""), list404()]);

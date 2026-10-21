@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Bell } from "lucide-react";
-import { currentActor } from "@/lib/session";
+import { requireDashboardActor } from "@/lib/dashboardAccess";
 import { listNotifications } from "@/lib/review";
 import { relativeDate } from "@/lib/format";
 import MarkAllRead from "./MarkAllRead";
 
 /** Notifications de la rédaction (§ 7.2) */
 export default async function NotificationsPage() {
-    const actor = (await currentActor())!;
+    const actor = await requireDashboardActor();
     const { items, unread } = await listNotifications(actor, 100);
     return (
         <main className="min-w-0 flex-1 px-10 py-12">

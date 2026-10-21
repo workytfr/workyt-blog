@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db";
 import { hostOf, isDomain, linkDomains } from "@/lib/linkIcon";
 import { currentActor } from "@/lib/session";
+import { can } from "@/lib/roles";
 import AffiliateLink from "@/models/AffiliateLink";
 import Post from "@/models/Post";
 
@@ -10,14 +11,16 @@ import Post from "@/models/Post";
  * 7 jours) ; à défaut, un petit globe.
  *
  * Liste blanche : seulement les domaines cités par un article publié ou un
- * lien affilié (et n'importe lequel pour un membre connecté, qui écrit ou
- * relit un brouillon). Sinon le blog servirait de relais de favicons à
+ * lien affilié (et n'importe lequel pour un membre de la rédaction, qui écrit
+ * ou relit un brouillon ; un simple lecteur connecté n'a que la liste blanche). Sinon le blog servirait de relais de favicons à
  * n'importe qui, et un inconnu pourrait vider le cache à coups de domaines.
  */
 const MAX_BYTES = 100_000;
 const MAX_ENTRIES = 1000;
 const ALLOWED_TTL = 10 * 60 * 1000;
-const cache = new Map<string, { body: ArrayBuffer; type: string }>();
+// Logo gardé 7 jours puis redemandé (le site a pu changer de logo, ou disparaître)
+const ICON_TTL = 7 * 24 * 60 * 60 * 1000;
+const cache = new Map<string, { body: ArrayBuffer; type: string; at: number }>();
 let allowed: { domains: Set<string>; at: number; pending?: Promise<Set<string>> } = { domains: new Set(), at: 0 };
 
 const GLOBE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8a8178" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>`;
@@ -41,14 +44,22 @@ async function allowedDomains(): Promise<Set<string>> {
     return allowed.pending;
 }
 
+/** Logo en cache et encore frais (un périmé est retiré) */
+function cached(domain: string) {
+    const icon = cache.get(domain);
+    if (icon && Date.now() - icon.at < ICON_TTL) return icon;
+    if (icon) cache.delete(domain);
+    return undefined;
+}
+
 async function isAllowed(domain: string): Promise<boolean> {
-    if (cache.has(domain)) return true;
+    if (cached(domain)) return true;
     try {
         if ((await allowedDomains()).has(domain)) return true;
     } catch (error) {
         console.error("[favicon]", error);
     }
-    return !!(await currentActor());
+    return can((await currentActor())?.role, "post.create");
 }
 
 async function fetchIcon(domain: string): Promise<{ body: ArrayBuffer; type: string } | null> {
@@ -71,9 +82,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ domain:
     // Domaine inconnu : le globe, sans rien demander à personne ni le garder (il peut être cité demain)
     if (!(await isAllowed(domain))) return new Response(GLOBE, { headers: { "Content-Type": "image/svg+xml", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": SVG_CSP } });
 
-    let icon = cache.get(domain);
+    let icon = cached(domain);
     if (!icon) {
-        icon = (await fetchIcon(domain)) ?? { body: new TextEncoder().encode(GLOBE).buffer as ArrayBuffer, type: "image/svg+xml" };
+        icon = { ...((await fetchIcon(domain)) ?? { body: new TextEncoder().encode(GLOBE).buffer as ArrayBuffer, type: "image/svg+xml" }), at: Date.now() };
         if (cache.size >= MAX_ENTRIES) cache.delete(cache.keys().next().value!);
         cache.set(domain, icon);
     }

@@ -1,10 +1,10 @@
-import { currentActor } from "@/lib/session";
+import { requireDashboardActor } from "@/lib/dashboardAccess";
 import { listInvitations } from "@/lib/review";
 import Invitations from "./Invitations";
 
 /** Coups de cœur qu'on m'a demandé d'écrire dans les articles des autres (§ 9) */
 export default async function InvitationsPage() {
-    const actor = (await currentActor())!;
+    const actor = await requireDashboardActor();
     const items = await listInvitations(actor);
     return (
         <main className="min-w-0 flex-1 px-10 py-12">

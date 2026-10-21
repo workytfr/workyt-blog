@@ -1,10 +1,10 @@
-import { getBlogSession } from "@/lib/auth";
+import { requireDashboard } from "@/lib/dashboardAccess";
 import { can } from "@/lib/roles";
 import MediaLibrary from "./MediaLibrary";
 
 /** Médiathèque : images, crédits, vérification des droits */
 export default async function MediasPage() {
-    const session = (await getBlogSession())!;
+    const session = await requireDashboard();
     return (
         <main className="min-w-0 flex-1 px-10 py-12">
             <div className="mx-auto max-w-6xl">
