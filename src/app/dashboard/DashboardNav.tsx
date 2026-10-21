@@ -102,14 +102,21 @@ export default function DashboardNav({ can, badges, categories, me }: NavProps) 
             </div>
 
             <div className={`mt-3 flex items-center gap-2 border-t border-ink/10 pt-3 ${rail ? "flex-col" : ""}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- avatar workyt.fr ou Blobatar */}
-                <img src={me.avatar} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full bg-paper2/60 object-cover" title={rail ? `${me.name} · ${me.role}` : undefined} />
-                {!rail && (
-                    <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold">{me.name}</span>
-                        <span className="block truncate text-xs text-ink/50">{me.role}</span>
-                    </span>
-                )}
+                <Link
+                    href="/dashboard/profil/"
+                    title={rail ? `${me.name} · ${me.role} — mon profil d'auteur` : "Mon profil d'auteur"}
+                    aria-current={active("/dashboard/profil/") ? "page" : undefined}
+                    className={`flex min-w-0 items-center gap-2 rounded-2xl p-1 transition hover:bg-paper2 ${rail ? "" : "flex-1"} ${active("/dashboard/profil/") ? "bg-paper2" : ""}`}
+                >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- avatar workyt.fr ou Blobatar */}
+                    <img src={me.avatar} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-full bg-paper2/60 object-cover" />
+                    {!rail && (
+                        <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">{me.name}</span>
+                            <span className="block truncate text-xs text-ink/50">{me.role}</span>
+                        </span>
+                    )}
+                </Link>
                 <Link href="/connexion/" className="grid h-9 w-9 place-items-center rounded-xl text-ink/50 hover:bg-paper2 hover:text-ink" title="Compte / déconnexion">
                     <LogOut className="h-[18px] w-[18px]" />
                 </Link>
