@@ -173,7 +173,8 @@ async function main() {
             log.unchanged++;
             continue;
         }
-        if (apply) await Post.updateOne({ _id: post._id }, { $set: { corrector: { author: a._id, name: a.name } } });
+        // Sans toucher la date « Modifié » : les listes du tableau de bord sont triées dessus
+        if (apply) await Post.updateOne({ _id: post._id }, { $set: { corrector: { author: a._id, name: a.name } } }, { timestamps: false });
         log.credited++;
     }
 

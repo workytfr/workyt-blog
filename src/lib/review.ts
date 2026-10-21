@@ -239,7 +239,8 @@ export async function setCorrector(id: string, actor: Actor, input: { who: strin
     const info = await correctorInfo(post.corrector);
     const reason = info.name ? [info.name, info.via ? CORRECTION_PLACE_LABELS[info.via] : null].filter(Boolean).join(" · ") : "aucun";
     post.workflow.push({ action: "corrector", member: new mongoose.Types.ObjectId(actor.memberId), name: actor.name, reason, at: new Date() });
-    await post.save();
+    // Un crédit n'est pas une modification de l'article : la date « Modifié » (tri des listes) ne bouge pas
+    await post.save({ timestamps: false });
     return { corrector: info, slug: post.slug, status: post.status };
 }
 
