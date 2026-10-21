@@ -19,6 +19,8 @@ const MemberSchema = new Schema(
         /** Profil d'auteur public, s'il écrit pour le blog */
         author: { type: Schema.Types.ObjectId, ref: "Author" },
         lastLoginAt: { type: Date },
+        /** Note interne de la page Équipe (prénom, pseudo Discord…), vue des seuls gestionnaires */
+        note: { type: String, default: "" },
     },
     { timestamps: true }
 );
