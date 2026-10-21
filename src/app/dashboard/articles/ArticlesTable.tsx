@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import CorrectionPlaceIcon from "@/components/CorrectionPlaceIcon";
+import { CORRECTION_PLACE_LABELS, type CorrectionPlace } from "@/lib/correction";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, GalleryHorizontal, Loader2, MessageSquare, RotateCcw, Trash2 } from "lucide-react";
@@ -15,7 +17,8 @@ export interface ArticleRow {
     thumb: string | null;
     categories: { name: string; color: string }[];
     authors: string[];
-    corrector: string | null;
+    /** Correcteur et lieu de la correction (Google Docs, Discord…) */
+    corrector: { name: string; via: CorrectionPlace | null } | null;
     scheduledAt: string | null;
     suggestions: number;
     seo: number | null;
@@ -175,7 +178,12 @@ export default function ArticlesTable({ rows, view, empty, canPurge = false, can
                                         </td>
                                         <td className="px-4">
                                             <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${st.className}`}>{st.label}</span>
-                                            {p.corrector && <div className="mt-1 text-[11px] text-ink/50">par {p.corrector}</div>}
+                                            {p.corrector && (
+                                                <div className="mt-1 flex items-center gap-1 text-[11px] text-ink/50" title={p.corrector.via ? `Corrigé : ${CORRECTION_PLACE_LABELS[p.corrector.via]}` : undefined}>
+                                                    {p.corrector.via && <CorrectionPlaceIcon place={p.corrector.via} className="h-3 w-3" />}
+                                                    {p.status === "in_correction" ? "par" : "corrigé par"} {p.corrector.name}
+                                                </div>
+                                            )}
                                             {p.scheduledAt && (
                                                 <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-ink/50">
                                                     <CalendarClock className="h-3 w-3" />

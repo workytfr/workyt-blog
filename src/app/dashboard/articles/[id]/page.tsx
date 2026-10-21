@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { getBlogSession } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { actorContext } from "@/lib/posts";
-import { editorState } from "@/lib/review";
+import { correctorEditor, correctorInfo, correctorOptions, editorState } from "@/lib/review";
 import { canReview } from "@/lib/workflow";
 import Post from "@/models/Post";
 import Category from "@/models/Category";
@@ -40,7 +40,10 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     const review = await editorState(actor, fullPost!);
     // La rédaction, pour inviter quelqu'un à écrire un coup de cœur (pas soi-même)
     const team = (await Member.find({ role: { $ne: "lecteur" }, _id: { $ne: actor.memberId } }).select("username").sort({ username: 1 }).lean()).map((m) => ({ id: String(m._id), name: m.username }));
-    const [cats, tags] = await Promise.all([Category.find({}).sort({ order: 1, name: 1 }).lean(), Tag.find({ _id: { $in: post.tags } }).lean()]);
+    const [cats, tags, correctorNow] = await Promise.all([Category.find({}).sort({ order: 1, name: 1 }).lean(), Tag.find({ _id: { $in: post.tags } }).lean(), correctorInfo(post.corrector)]);
+    // Corrections faites hors du blog (Google Docs, Discord…) : la rédaction en chef choisit le correcteur, un correcteur se déclare
+    const rights = correctorEditor(actor, correctorNow.key);
+    const correctorChoices = rights === "all" ? await correctorOptions() : rights === "self" ? [{ key: `m:${actor.memberId}`, name: actor.name, account: true }] : null;
     /* eslint-disable @typescript-eslint/no-explicit-any -- document « lean » */
     const p = post as any;
     const data: EditorPost = {
@@ -82,6 +85,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
             me={{ id: actor.memberId, name: actor.name, admin: actor.role === "admin" }}
             initialReview={review}
             team={team}
+            corrector={{ info: correctorNow, options: correctorChoices }}
         />
     );
 }

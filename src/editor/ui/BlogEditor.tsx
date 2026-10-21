@@ -52,6 +52,8 @@ import { PICK_IMAGE_EVENT } from "./slash";
 import MediaPicker from "./MediaPicker";
 import TableMenu from "./TableMenu";
 import SidePanel, { type PanelState, type PanelTab } from "./SidePanel";
+import CorrectorField, { type CorrectorOption } from "./CorrectorField";
+import type { CorrectorInfo } from "@/lib/correction";
 import ReviewPanel, { type PendingAnchor } from "./ReviewPanel";
 import { SUGGEST_INTERNAL, setSuggesting } from "./suggestMode";
 import { documentSuggestions } from "../marks";
@@ -86,7 +88,22 @@ const PRIMARY: WorkflowAction[] = ["approve", "publish", "validate", "take", "su
  * (lot 3) : boutons d'étape, mode suggestion du correcteur, commentaires,
  * versions, présence et verrou d'édition.
  */
-export default function BlogEditor({ post, categories, me, initialReview, team }: { post: EditorPost; categories: EditorCategory[]; me: { id: string; name: string; admin?: boolean }; initialReview: ReviewState; team: TeamMember[] }) {
+export default function BlogEditor({
+    post,
+    categories,
+    me,
+    initialReview,
+    team,
+    corrector,
+}: {
+    post: EditorPost;
+    categories: EditorCategory[];
+    me: { id: string; name: string; admin?: boolean };
+    initialReview: ReviewState;
+    team: TeamMember[];
+    /** Correcteur de l'article ; `options` : la rédaction en chef peut le changer */
+    corrector: { info: CorrectorInfo; options: CorrectorOption[] | null };
+}) {
     const router = useRouter();
     const [title, setTitle] = useState(post.title === "Sans titre" ? "" : post.title);
     const [meta, setMeta] = useState<PanelState>({
@@ -475,6 +492,8 @@ export default function BlogEditor({ post, categories, me, initialReview, team }
     const pendingSuggestions = editor ? documentSuggestions(editor.state.doc.toJSON()).length : 0;
     const lastReason = review.workflow.find((w) => w.reason)?.reason ?? null;
     const primary = PRIMARY.find((a) => review.actions.includes(a));
+    // Article pris en correction depuis l'ouverture de l'éditeur : affiché tel quel jusqu'au rechargement
+    const taken = review.corrector && review.corrector !== corrector.info.name ? review.corrector : null;
     const banner = statusBanner({ status, mode: review.mode, corrector: review.corrector, lastReason, scheduledAt, lock, me: me.name });
 
     return (
@@ -495,6 +514,13 @@ export default function BlogEditor({ post, categories, me, initialReview, team }
                 reviewBadge={pendingSuggestions}
                 modulesCount={modules.length}
                 seoAssistant={<SeoAssistant report={seoReport} onTarget={goToTarget} suggestions={seoExtra?.suggestions ?? null} onRefreshSuggestions={() => void loadSeoExtra()} onInsertLink={insertSuggestion} readOnly={!canWrite} />}
+                corrector={
+                    taken ? (
+                        <CorrectorField key={taken} postId={post.id} initial={{ key: null, name: taken, via: "blog" }} options={null} locked />
+                    ) : (
+                        <CorrectorField postId={post.id} initial={corrector.info} options={corrector.options} locked={status === "in_correction"} />
+                    )
+                }
                 modulesTab={<ModulesTab editor={editor} modules={modules} onChange={updateModules} pickImage={pickModuleImage} team={team} readOnly={!metaWritable} />}
                 review={
                     <ReviewPanel

@@ -6,6 +6,8 @@ import { can } from "@/lib/roles";
 import { connectDB } from "@/lib/db";
 import { relativeDate } from "@/lib/format";
 import Post from "@/models/Post";
+import CorrectionPlaceIcon from "@/components/CorrectionPlaceIcon";
+import { isCorrectionPlace } from "@/lib/correction";
 import Member from "@/models/Member";
 import "@/models/Author";
 
@@ -20,7 +22,7 @@ export default async function CorrectionPage() {
         Post.find({ status: "pending_correction", authors: { $ne: me?.author ?? null } }).select(fields).sort({ updatedAt: 1 }).populate("authors", "name").lean(),
         Post.find({ status: "in_correction", "corrector.member": session.user.memberId }).select(fields).sort({ updatedAt: -1 }).populate("authors", "name").lean(),
         Post.find({ "corrector.member": session.user.memberId, status: { $in: ["to_revise", "pending_approval", "scheduled", "published"] } })
-            .select("title status updatedAt")
+            .select("title status updatedAt corrector.via")
             .sort({ updatedAt: -1 })
             .limit(8)
             .lean(),
@@ -79,6 +81,7 @@ export default async function CorrectionPage() {
                                 <li key={String(p._id)}>
                                     <Link href={`/dashboard/articles/${p._id}/`} className="flex items-center gap-3 px-5 py-3 hover:bg-paper">
                                         <span className="min-w-0 flex-1 truncate">{p.title}</span>
+                                        {isCorrectionPlace(p.corrector?.via) && <CorrectionPlaceIcon place={p.corrector.via} />}
                                         <span className="text-xs text-ink/45">{relativeDate(p.updatedAt as Date)}</span>
                                     </Link>
                                 </li>

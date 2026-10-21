@@ -1,4 +1,5 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { CORRECTION_PLACES } from "@/lib/correction";
 
 export const POST_STATUSES = [
     "draft",
@@ -90,6 +91,8 @@ const PostSchema = new Schema(
             /** Anciens articles (suivi de rédaction) : profil du correcteur, qui n'a pas forcément de compte */
             author: { type: Schema.Types.ObjectId, ref: "Author" },
             name: { type: String },
+            /** Où la correction a été faite (blog, Google Docs, Discord…), voir lib/correction */
+            via: { type: String, enum: CORRECTION_PLACES },
         },
         /** Suggestions en attente (copie du nombre trouvé dans contentJson, pour les listes) */
         pendingSuggestions: { type: Number, default: 0 },

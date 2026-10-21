@@ -47,6 +47,7 @@ export default function SidePanel({
     modulesTab,
     modulesCount,
     seoAssistant,
+    corrector,
 }: {
     editor: Editor | null;
     state: PanelState;
@@ -67,6 +68,8 @@ export default function SidePanel({
     modulesCount: number;
     /** Assistant SEO (note, critères, suggestions), en tête de l'onglet SEO */
     seoAssistant: React.ReactNode;
+    /** Correcteur de l'article, en bas de l'onglet Article (hors des champs verrouillés) */
+    corrector: React.ReactNode;
     /** Champs verrouillés (lecture, correction en mode suggestion, main prise par un autre) */
     readOnly: boolean;
 }) {
@@ -109,6 +112,7 @@ export default function SidePanel({
                         {tab === "seo" && <SeoTab state={state} onChange={onChange} title={title} />}
                         {tab === "bloc" && <BlockTab editor={editor} onReplaceImage={onReplaceImage} />}
                     </fieldset>
+                    {tab === "article" && corrector}
                     </>
                 )}
             </div>

@@ -141,7 +141,7 @@ export function canReview(c: Omit<WorkflowContext, "pendingSuggestions">): boole
 }
 
 /** Petits libellés du journal (« Camille a envoyé l'article en correction ») */
-export const ACTION_PAST: Record<WorkflowAction | "reschedule", string> = {
+export const ACTION_PAST: Record<WorkflowAction | "reschedule" | "corrector", string> = {
     submit: "a envoyé l'article en correction",
     withdraw: "a retiré l'article de la correction",
     take: "a pris la correction",
@@ -155,4 +155,5 @@ export const ACTION_PAST: Record<WorkflowAction | "reschedule", string> = {
     trash: "a mis l'article à la corbeille",
     restore: "a restauré l'article",
     reschedule: "a changé la date de publication",
+    corrector: "a changé le correcteur",
 };

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isCorrectionPlace } from "@/lib/correction";
 import { getBlogSession } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { can } from "@/lib/roles";
@@ -70,7 +71,7 @@ export default async function ArticlesPage({ searchParams }: Props) {
         thumb: p.featuredImage?.url ?? null,
         categories: (p.categories as any[]).filter(Boolean).map((c) => ({ name: c.name as string, color: (c.color as string) || "#ff6a1a" })),
         authors: (p.authors as any[]).filter(Boolean).map((a) => a.name as string),
-        corrector: p.status === "in_correction" ? (p.corrector?.name ?? null) : null,
+        corrector: p.corrector?.name && !["draft", "pending_correction"].includes(p.status) ? { name: p.corrector.name, via: isCorrectionPlace(p.corrector.via) ? p.corrector.via : null } : null,
         scheduledAt: p.status === "scheduled" && p.scheduledAt ? new Date(p.scheduledAt).toISOString() : null,
         suggestions: p.pendingSuggestions ?? 0,
         seo: typeof p.seo?.score === "number" ? p.seo.score : null,

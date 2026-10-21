@@ -21,6 +21,7 @@ import { ensureAuthor } from "./posts";
 import { notifyReviewDiscord } from "./discord";
 import { revisionKind } from "./revisionRules";
 import { purgeRevisions, revisionContent, saveRevision } from "./revisions";
+import { CORRECTION_PLACE_LABELS, isCorrectionPlace, type CorrectionPlace, type CorrectorInfo } from "./correction";
 
 /**
  * Circuit de relecture (lot 3, cahier des charges § 7) : changements de
@@ -113,7 +114,7 @@ export async function applyAction(id: string, action: WorkflowAction, actor: Act
 
     const from = post.status;
     post.status = to;
-    if (action === "take") post.corrector = { member: new mongoose.Types.ObjectId(actor.memberId), name: actor.name };
+    if (action === "take") post.corrector = { member: new mongoose.Types.ObjectId(actor.memberId), name: actor.name, via: "blog" };
     if (action === "trash") post.trashedAt = new Date();
     if (action === "restore") post.trashedAt = undefined;
     if (to === "scheduled") {
@@ -157,6 +158,89 @@ export async function editorState(actor: Actor, post: PostDocument) {
         corrector: post.corrector?.name ?? null,
         workflow: workflowLog(post),
     };
+}
+
+/* ─── Correcteur choisi à la main (rédaction en chef) ─── */
+
+type CorrectorField = { member?: unknown; author?: unknown; name?: string | null; via?: string | null } | null | undefined;
+
+/** Correcteur de l'article pour l'éditeur ; un profil relié depuis à un compte est désigné par le compte */
+export async function correctorInfo(c: CorrectorField): Promise<CorrectorInfo> {
+    const via = isCorrectionPlace(c?.via) ? c.via : null;
+    if (c?.member) return { key: `m:${c.member}`, name: c.name ?? null, via };
+    if (c?.author) {
+        const m = await Member.findOne({ author: c.author }).select("_id").lean();
+        return { key: m ? `m:${m._id}` : `a:${c.author}`, name: c.name ?? null, via };
+    }
+    return { key: null, name: null, via };
+}
+
+/**
+ * Personnes qu'on peut déclarer correcteur : les comptes de l'équipe et les
+ * profils déjà crédités d'une correction (anciens correcteurs sans compte).
+ */
+export async function correctorOptions(): Promise<{ key: string; name: string; account: boolean }[]> {
+    await connectDB();
+    const [members, credited] = await Promise.all([
+        Member.find({ role: { $ne: "lecteur" } }).select("username author").lean(),
+        Post.distinct("corrector.author", { "corrector.author": { $exists: true } }),
+    ]);
+    const linked = new Set(members.map((m) => String(m.author ?? "")));
+    const authors = await Author.find({ _id: { $in: credited }, member: null }).select("name").lean();
+    const names = new Map((await Author.find({ _id: { $in: members.map((m) => m.author).filter(Boolean) } }).select("name").lean()).map((a) => [String(a._id), a.name]));
+    return [
+        ...members.map((m) => ({ key: `m:${m._id}`, name: names.get(String(m.author)) || m.username, account: true })),
+        ...authors.filter((a) => !linked.has(String(a._id))).map((a) => ({ key: `a:${a._id}`, name: a.name, account: false })),
+    ].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+}
+
+/**
+ * Change le correcteur d'un article ou le lieu de la correction (Google Docs,
+ * Discord…) : pour les corrections faites hors du circuit du blog. Noté au journal.
+ * Voir correctorEditor pour qui peut le faire.
+ */
+/**
+ * Qui choisit le correcteur : la rédaction en chef, n'importe qui ; un
+ * correcteur, lui-même seulement, sur un article sans correcteur ou le sien.
+ */
+export function correctorEditor(actor: Pick<Actor, "role" | "memberId">, currentKey: string | null): "all" | "self" | null {
+    if (can(actor.role, "post.approve")) return "all";
+    if (can(actor.role, "post.correct") && (!currentKey || currentKey === `m:${actor.memberId}`)) return "self";
+    return null;
+}
+
+export async function setCorrector(id: string, actor: Actor, input: { who: string | null; via: string | null }) {
+    if (!can(actor.role, "post.correct")) throw new PostError("Réservé aux correcteurs et à la rédaction en chef.", 403);
+    if (input.via !== null && !isCorrectionPlace(input.via)) throw new PostError("Lieu de correction inconnu.");
+    const post = await findPost(id);
+    const current = await correctorInfo(post.corrector);
+    const rights = correctorEditor(actor, current.key);
+    if (!rights) throw new PostError("Un autre correcteur est crédité : seule la rédaction en chef peut le changer.", 403);
+    if (rights === "self" && input.who && input.who !== `m:${actor.memberId}`) throw new PostError("Tu ne peux déclarer que toi-même comme correcteur.", 403);
+
+    let next: { member?: mongoose.Types.ObjectId; author?: mongoose.Types.ObjectId; name: string } | null = null;
+    if (input.who && input.who !== current.key) {
+        if (post.status === "in_correction") throw new PostError("L'article est en cours de correction sur le blog : le correcteur est celui qui l'a pris.", 409);
+        const [kind, ref] = input.who.split(":");
+        if (!isId(ref) || (kind !== "m" && kind !== "a")) throw new PostError("Correcteur introuvable.", 404);
+        const member = kind === "m" ? await Member.findById(ref).select("username author role").lean() : await Member.findOne({ author: ref }).select("username author role").lean();
+        const author = kind === "a" ? await Author.findById(ref).select("name").lean() : member?.author ? await Author.findById(member.author).select("name").lean() : null;
+        if (kind === "m" ? !member || member.role === "lecteur" : !author) throw new PostError("Correcteur introuvable.", 404);
+        if (author && post.authors.some((a) => String(a) === String(author._id))) throw new PostError("C'est un des auteurs de l'article.");
+        next = { ...(member ? { member: member._id } : {}), ...(author ? { author: author._id } : {}), name: author?.name || member!.username };
+    }
+    const via = (input.via ?? undefined) as CorrectionPlace | undefined;
+    if (!input.who && !current.key) return { corrector: current, slug: post.slug, status: post.status };
+    if (!input.who) post.set("corrector", undefined);
+    else if (next) post.set("corrector", { ...next, via });
+    else if (post.corrector) post.set("corrector.via", via);
+    if (!post.isModified()) return { corrector: current, slug: post.slug, status: post.status };
+
+    const info = await correctorInfo(post.corrector);
+    const reason = info.name ? [info.name, info.via ? CORRECTION_PLACE_LABELS[info.via] : null].filter(Boolean).join(" · ") : "aucun";
+    post.workflow.push({ action: "corrector", member: new mongoose.Types.ObjectId(actor.memberId), name: actor.name, reason, at: new Date() });
+    await post.save();
+    return { corrector: info, slug: post.slug, status: post.status };
 }
 
 export function workflowLog(post: { workflow?: { action: string; name?: string | null; reason?: string | null; at?: Date | null; to?: string | null }[] }) {
