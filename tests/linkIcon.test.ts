@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addLinkIcons, faviconUrl, linkDomain } from "../src/lib/linkIcon";
+import { addLinkIcons, faviconUrl, linkDomain, linkDomains } from "../src/lib/linkIcon";
 import { renderPostHtml } from "../src/lib/render";
 
 test("domaine d'un lien : sans www, interne = workyt, rien pour mailto ou ancre", () => {
@@ -10,7 +10,7 @@ test("domaine d'un lien : sans www, interne = workyt, rien pour mailto ou ancre"
     assert.equal(linkDomain("mailto:contact@workyt.fr"), null);
     assert.equal(linkDomain("#partie-2"), null);
     assert.equal(linkDomain("//evil.com/x"), null);
-    assert.equal(faviconUrl("blog.workyt.fr"), "/icon.svg");
+    assert.equal(faviconUrl("blog.workyt.fr"), "/apple-touch-icon.png");
     assert.equal(faviconUrl("wikipedia.org"), "/api/favicon/wikipedia.org/");
 });
 
@@ -24,4 +24,9 @@ test("le flux RSS n'a pas de logo, la page de l'article si", () => {
     const html = '<p>Lire <a href="https://www.onisep.fr">Onisep</a></p>';
     assert.doesNotMatch(renderPostHtml(html), /wk-fav/);
     assert.match(renderPostHtml(html, { linkIcons: true }), /Onisep<img class="wk-fav" src="\/api\/favicon\/onisep\.fr\/"/);
+});
+
+test("liste blanche des logos : les domaines des liens http(s) d'un article, sans doublon", () => {
+    const html = '<p><a href="https://www.onisep.fr/a">a</a> <a href="https://onisep.fr/b?x=1&amp;y=2">b</a> <a href="/interne/">c</a> <a href="mailto:x@y.fr">d</a> <a href="http://fr.wikipedia.org">e</a></p>';
+    assert.deepEqual(linkDomains(html), ["onisep.fr", "fr.wikipedia.org"]);
 });

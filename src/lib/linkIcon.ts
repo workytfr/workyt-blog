@@ -38,8 +38,18 @@ export function isDomain(d: string): boolean {
     return DOMAIN.test(d);
 }
 
+/** Domaines des liens http(s) d'un HTML (liste blanche de /api/favicon/) */
+export function linkDomains(html: string): string[] {
+    const out = new Set<string>();
+    for (const m of html.matchAll(/\bhref="(https?:\/\/[^"]*)"/gi)) {
+        const host = hostOf(m[1].replace(/&amp;/g, "&"));
+        if (host) out.add(host);
+    }
+    return [...out];
+}
+
 export function faviconUrl(domain: string): string {
-    return WORKYT.test(domain) ? "/icon.svg" : `/api/favicon/${domain}/`;
+    return WORKYT.test(domain) ? "/apple-touch-icon.png" : `/api/favicon/${domain}/`;
 }
 
 /**
