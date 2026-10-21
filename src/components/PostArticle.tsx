@@ -199,6 +199,22 @@ export default async function PostArticle({
                         </div>
                     )}
 
+                    {/* Correcteur : la relecture ne se fait pas dans l'ombre */}
+                    {post.corrector && (
+                        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[24px] border border-ink/10 bg-white px-6 py-4">
+                            <span className="lab text-ink/45">Relu et corrigé par</span>
+                            {post.corrector.slug ? (
+                                <Link href={`/author/${post.corrector.slug}/`} className="inline-flex items-center gap-2 text-sm font-semibold hover:text-accentdark">
+                                    <Avatar author={post.corrector} size={30} /> {post.corrector.name}
+                                </Link>
+                            ) : (
+                                <span className="inline-flex items-center gap-2 text-sm font-semibold">
+                                    <Avatar author={post.corrector} size={30} /> {post.corrector.name}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     {/* Précédent / suivant */}
                     {(previous || next) && (
                         <div className="mt-6 grid gap-4 sm:grid-cols-2">

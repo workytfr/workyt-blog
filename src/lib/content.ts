@@ -11,6 +11,7 @@ import Post from "@/models/Post";
 import Category from "@/models/Category";
 import Tag from "@/models/Tag";
 import Author from "@/models/Author";
+import Member from "@/models/Member";
 import { containsRegex } from "./searchRegex";
 
 /* ─── Formes envoyées aux pages (sérialisables) ─── */
@@ -64,6 +65,8 @@ export interface PostView extends PostCardView {
     modules: ArticleModule[];
     /** Rédacteurs invités (coup de cœur externe validé) */
     contributors: AuthorView[];
+    /** Correcteur qui a relu l'article, crédité sous le texte (slug vide : pas de page auteur) */
+    corrector: AuthorView | null;
     /** Profil d'auteur des invités des coups de cœur, par identifiant de membre */
     guests: Record<string, AuthorView>;
     /** Liens affiliés de l'article : /go/<nom>/ → domaine du marchand (logo à droite du lien) */
@@ -133,6 +136,7 @@ function toPost(p: any): PostView {
         contentHtml: p.contentHtml || "",
         modules: (p.modules ?? []) as ArticleModule[],
         contributors: (p.contributors || []).filter((c: any) => c?.slug).map(toAuthor),
+        corrector: null,
         guests: {},
         affiliates: {},
         tags: (p.tags || []).filter(Boolean).map(toTag),
@@ -167,7 +171,7 @@ export const getPostBySlug = cache(async (slug: string): Promise<PostView | null
     const p = await Post.findOne(publishedFilter({ slug }))
         .populate([...POPULATE_CARD, { path: "tags", select: "slug name" }, { path: "contributors", select: "slug name title bio avatarUrl workytId" }])
         .lean();
-    return p ? withGuests(toPost(p)) : null;
+    return p ? withCorrector(await withGuests(toPost(p)), p.corrector?.member) : null;
 });
 
 /** Aperçu de la rédaction : l'article quel que soit son statut (droits vérifiés par l'appelant) */
@@ -178,7 +182,23 @@ export async function getPostForPreview(id: string): Promise<PostView | null> {
         .lean();
     if (!p) return null;
     // Un brouillon n'a pas de date de publication : on affiche celle du jour
-    return withGuests(toPost({ ...p, publishedAt: p.publishedAt ?? new Date(), modifiedAt: p.modifiedAt ?? p.publishedAt ?? new Date() }));
+    return withCorrector(await withGuests(toPost({ ...p, publishedAt: p.publishedAt ?? new Date(), modifiedAt: p.modifiedAt ?? p.publishedAt ?? new Date() })), p.corrector?.member);
+}
+
+/**
+ * Correcteur crédité sous l'article : son profil d'auteur s'il en a un, sinon
+ * son pseudo et sa photo workyt.fr. Rien s'il est aussi l'un des auteurs.
+ */
+async function withCorrector(post: PostView, memberId: unknown): Promise<PostView> {
+    if (!memberId) return post;
+    const m = await Member.findById(memberId).select("username avatarUrl workytId author").lean();
+    if (!m) return post;
+    const a = m.author ? await Author.findById(m.author).lean() : null;
+    if (a && post.authors.some((x) => x.id === String(a._id))) return post;
+    const corrector: AuthorView = a
+        ? toAuthor(a)
+        : { id: String(m._id), slug: "", name: m.username, title: "", bio: "", avatarUrl: avatarSrc({ avatarUrl: m.avatarUrl, workytId: m.workytId, seed: m.username }) };
+    return { ...post, corrector };
 }
 
 /** Profils d'auteur des rédacteurs invités des coups de cœur (avatar, lien) */

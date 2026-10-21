@@ -145,6 +145,7 @@ export function postJsonLd(post: PostView, comments: JsonLdComment[] = []) {
                 inLanguage: "fr-FR",
                 author: post.authors.map((a) => ({ "@type": "Person", name: a.name, url: absoluteUrl(`/author/${a.slug}/`) })),
                 contributor: post.contributors.length ? post.contributors.map((a) => ({ "@type": "Person", name: a.name, url: absoluteUrl(`/author/${a.slug}/`) })) : undefined,
+                editor: post.corrector ? { "@type": "Person", name: post.corrector.name, ...(post.corrector.slug ? { url: absoluteUrl(`/author/${post.corrector.slug}/`) } : {}) } : undefined,
                 citation: citations.length ? citations : undefined,
                 commentCount: published.length,
                 comment: published.length
