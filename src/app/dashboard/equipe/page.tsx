@@ -36,7 +36,7 @@ export default async function TeamPage({ searchParams }: Props) {
         ...(all || query ? {} : { role: { $ne: "lecteur" } }),
     };
     const month = daysAgo(30);
-    const [members, total, teamCount, allCount, log, counts, corrected, byRole, publishedMonth, correctedMonth, newMembers] = await Promise.all([
+    const [members, total, teamCount, allCount, log, counts, corrected, correctedOld, byRole, publishedMonth, correctedMonth, newMembers] = await Promise.all([
         Member.find(filter)
             .sort(all ? { lastLoginAt: -1, username: 1 } : { role: 1, username: 1 })
             .skip(all ? (page - 1) * PER_PAGE : 0)
@@ -49,14 +49,17 @@ export default async function TeamPage({ searchParams }: Props) {
         Post.aggregate<{ _id: unknown; n: number }>([{ $match: { status: "published" } }, { $unwind: "$authors" }, { $group: { _id: "$authors", n: { $sum: 1 } } }]),
         // Articles publiés passés par la correction, par correcteur
         Post.aggregate<{ _id: unknown; n: number }>([{ $match: { status: "published", "corrector.member": { $exists: true } } }, { $group: { _id: "$corrector.member", n: { $sum: 1 } } }]),
+        // Anciens articles (suivi de rédaction) : le correcteur est un profil d'auteur
+        Post.aggregate<{ _id: unknown; n: number }>([{ $match: { status: "published", "corrector.member": { $exists: false }, "corrector.author": { $exists: true } } }, { $group: { _id: "$corrector.author", n: { $sum: 1 } } }]),
         Member.aggregate<{ _id: Role; n: number }>([{ $match: { role: { $ne: "lecteur" } } }, { $group: { _id: "$role", n: { $sum: 1 } } }]),
         Post.countDocuments({ status: "published", publishedAt: { $gte: month, $lte: new Date() } }),
-        Post.countDocuments({ status: "published", publishedAt: { $gte: month, $lte: new Date() }, "corrector.member": { $exists: true } }),
+        Post.countDocuments({ status: "published", publishedAt: { $gte: month, $lte: new Date() }, $or: [{ "corrector.member": { $exists: true } }, { "corrector.author": { $exists: true } }] }),
         Member.countDocuments({ createdAt: { $gte: month } }),
     ]);
     const byCorrector = new Map(corrected.map((c) => [String(c._id), c.n]));
     const roleCount = (r: Role) => byRole.find((x) => x._id === r)?.n ?? 0;
-    const correctedTotal = corrected.reduce((sum, c) => sum + c.n, 0);
+    const byOldCorrector = new Map(correctedOld.map((c) => [String(c._id), c.n]));
+    const correctedTotal = [...corrected, ...correctedOld].reduce((sum, c) => sum + c.n, 0);
     const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
     const cards = [
         {
@@ -120,7 +123,7 @@ export default async function TeamPage({ searchParams }: Props) {
                         role: m.role as Role,
                         avatar: avatarSrc({ avatarUrl: m.avatarUrl, workytId: m.workytId, seed: m.username }),
                         published: m.author ? (byAuthor.get(String(m.author)) ?? 0) : 0,
-                        corrected: byCorrector.get(String(m._id)) ?? 0,
+                        corrected: (byCorrector.get(String(m._id)) ?? 0) + (m.author ? (byOldCorrector.get(String(m.author)) ?? 0) : 0),
                         lastLogin: m.lastLoginAt ? relativeDate(m.lastLoginAt) : null,
                     }))}
                 />

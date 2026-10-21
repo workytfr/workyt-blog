@@ -171,7 +171,7 @@ export const getPostBySlug = cache(async (slug: string): Promise<PostView | null
     const p = await Post.findOne(publishedFilter({ slug }))
         .populate([...POPULATE_CARD, { path: "tags", select: "slug name" }, { path: "contributors", select: "slug name title bio avatarUrl workytId" }])
         .lean();
-    return p ? withCorrector(await withGuests(toPost(p)), p.corrector?.member) : null;
+    return p ? withCorrector(await withGuests(toPost(p)), p.corrector) : null;
 });
 
 /** Aperçu de la rédaction : l'article quel que soit son statut (droits vérifiés par l'appelant) */
@@ -182,22 +182,23 @@ export async function getPostForPreview(id: string): Promise<PostView | null> {
         .lean();
     if (!p) return null;
     // Un brouillon n'a pas de date de publication : on affiche celle du jour
-    return withCorrector(await withGuests(toPost({ ...p, publishedAt: p.publishedAt ?? new Date(), modifiedAt: p.modifiedAt ?? p.publishedAt ?? new Date() })), p.corrector?.member);
+    return withCorrector(await withGuests(toPost({ ...p, publishedAt: p.publishedAt ?? new Date(), modifiedAt: p.modifiedAt ?? p.publishedAt ?? new Date() })), p.corrector);
 }
 
 /**
  * Correcteur crédité sous l'article : son profil d'auteur s'il en a un, sinon
  * son pseudo et sa photo workyt.fr. Rien s'il est aussi l'un des auteurs.
+ * Anciens articles : le profil repris du suivi de rédaction, avec ou sans compte.
  */
-async function withCorrector(post: PostView, memberId: unknown): Promise<PostView> {
-    if (!memberId) return post;
-    const m = await Member.findById(memberId).select("username avatarUrl workytId author").lean();
-    if (!m) return post;
-    const a = m.author ? await Author.findById(m.author).lean() : null;
+async function withCorrector(post: PostView, c: { member?: unknown; author?: unknown } | null | undefined): Promise<PostView> {
+    const m = c?.member ? await Member.findById(c.member).select("username avatarUrl workytId author").lean() : null;
+    const authorId = m ? m.author : c?.author;
+    const a = authorId ? await Author.findById(authorId).lean() : null;
+    if (!m && !a) return post;
     if (a && post.authors.some((x) => x.id === String(a._id))) return post;
     const corrector: AuthorView = a
         ? toAuthor(a)
-        : { id: String(m._id), slug: "", name: m.username, title: "", bio: "", avatarUrl: avatarSrc({ avatarUrl: m.avatarUrl, workytId: m.workytId, seed: m.username }) };
+        : { id: String(m!._id), slug: "", name: m!.username, title: "", bio: "", avatarUrl: avatarSrc({ avatarUrl: m!.avatarUrl, workytId: m!.workytId, seed: m!.username }) };
     return { ...post, corrector };
 }
 

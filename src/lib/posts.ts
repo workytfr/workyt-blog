@@ -2,6 +2,7 @@ import "server-only";
 import mongoose from "mongoose";
 import type { JSONContent } from "@tiptap/core";
 import { connectDB } from "./db";
+import { slugify } from "./slug";
 import { can, type Role } from "./roles";
 import { documentImages, documentText, documentToHtml } from "@/editor/html";
 import { readingMinutes } from "./render";
@@ -37,22 +38,7 @@ export interface Actor {
     name: string;
 }
 
-/** Adresse lisible : « Mon Été à Paris ! » → « mon-ete-a-paris » */
-export function slugify(text: string): string {
-    return (
-        text
-            .normalize("NFD")
-            .replace(/[̀-ͯ]/g, "")
-            .replace(/œ/gi, "oe")
-            .replace(/æ/gi, "ae")
-            .toLowerCase()
-            .replace(/['’]/g, "-")
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "")
-            .slice(0, 90)
-            .replace(/-+$/g, "") || "article"
-    );
-}
+export { slugify };
 
 /** Adresses réservées par les pages du blog : un article ne peut pas les prendre */
 const RESERVED = new Set(["category", "tag", "author", "page", "feed", "search", "connexion", "dashboard", "api", "wp-json", "wp-admin", "sitemaps"]);

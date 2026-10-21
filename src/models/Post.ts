@@ -87,6 +87,8 @@ const PostSchema = new Schema(
         /** Le correcteur qui a pris l'article */
         corrector: {
             member: { type: Schema.Types.ObjectId, ref: "Member" },
+            /** Anciens articles (suivi de rédaction) : profil du correcteur, qui n'a pas forcément de compte */
+            author: { type: Schema.Types.ObjectId, ref: "Author" },
             name: { type: String },
         },
         /** Suggestions en attente (copie du nombre trouvé dans contentJson, pour les listes) */

@@ -25,6 +25,8 @@ const AuthorSchema = new Schema(
         email: { type: String, trim: true, lowercase: true, index: true, sparse: true },
         /** Rôle WordPress (import) : donné au compte relié s'il est encore « lecteur » */
         wpRole: { type: String },
+        /** Pseudo Discord (suivi de rédaction) : retrouve le profil d'un import à l'autre */
+        discord: { type: String, trim: true, lowercase: true, index: true, sparse: true },
     },
     { timestamps: true }
 );
