@@ -947,6 +947,39 @@ html.dark .post-content .wk-toc a:hover { color: #ff8a4c; }
     }
 }
 
+/* Correcteur de langue : rouge orthographe, bleu grammaire, gris typographie, pointillés pour les conseils */
+.wk-editor .wk-lang {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+    text-decoration-skip-ink: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+.wk-editor .wk-lang:hover {
+    background: rgb(255 106 26 / 0.09);
+}
+.wk-editor .wk-lang--orthographe {
+    text-decoration-style: wavy;
+    text-decoration-color: #d92d20;
+}
+.wk-editor .wk-lang--grammaire {
+    text-decoration-style: wavy;
+    text-decoration-color: #2f86b3;
+}
+.wk-editor .wk-lang--typographie {
+    text-decoration-color: rgb(var(--c-ink) / 0.4);
+}
+.wk-editor .wk-lang--style {
+    text-decoration-style: dotted;
+    text-decoration-color: #e08a00;
+}
+.wk-editor .wk-lang--nom {
+    text-decoration-style: dotted;
+    text-decoration-color: rgb(var(--c-ink) / 0.35);
+}
+
 /* ─── Page 404 : le renard et les moutons (SVG animé, ~8 s) ───
    État de base = fin de l'histoire (champ vide, panneau posé) : c'est ce
    qu'on voit sans animation. Les animations jouent l'histoire depuis le début. */

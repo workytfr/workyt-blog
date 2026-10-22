@@ -74,6 +74,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
         scheduledAt: p.scheduledAt ? new Date(p.scheduledAt).toISOString() : null,
         modules: p.modules ?? [],
         isPillar: !!p.isPillar,
+        languageIgnores: p.languageIgnores ?? [],
         updatedAt: new Date(p.updatedAt).toISOString(),
     };
     /* eslint-enable @typescript-eslint/no-explicit-any */

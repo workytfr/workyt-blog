@@ -1,11 +1,13 @@
 import type { JSONContent } from "@tiptap/core";
 import type { ArticleModule } from "../modules/types";
 import { moduleIssues } from "../modules/sanitize";
+import { languageRatio, tolerance, type LangCounts } from "../language/core";
 
 /**
  * Assistant SEO (cahier des charges § 10.3) : note sur 100, comme Rank Math.
- * Cinq groupes : mot-clé principal (35), titre et description (15), contenu
- * (20), liens (15), lisibilité (15). Chaque critère est vert, orange ou
+ * Six groupes : mot-clé principal (30), titre et description (15), contenu
+ * (15), liens (15), lisibilité (10), langue (15 : orthographe, grammaire,
+ * typographie, d'après Grammalecte — voir lib/language). Chaque critère est vert, orange ou
  * rouge, avec une phrase d'explication et, si possible, le passage concerné.
  *
  * Fonction pure, partagée : l'éditeur la recalcule en direct, le serveur
@@ -29,11 +31,13 @@ export interface SeoInput {
     deadLinks?: string[];
     /** Adresses du blog et de workyt.fr (liens internes) */
     siteHosts?: string[];
+    /** Fautes repérées par le correcteur (null : vérification pas encore faite ou indisponible) */
+    language?: LangCounts | null;
 }
 
 export type CheckStatus = "good" | "ok" | "bad";
 /** Où regarder : un champ, ou un bloc du texte (index du bloc de premier niveau) */
-export type SeoTarget = { field: "seoTitle" | "seoDescription" | "slug" | "keywords" | "featured" } | { block: number };
+export type SeoTarget = { field: "seoTitle" | "seoDescription" | "slug" | "keywords" | "featured" | "language" } | { block: number };
 
 export interface SeoCheck {
     id: string;
@@ -46,7 +50,7 @@ export interface SeoCheck {
 }
 
 export interface SeoGroup {
-    id: "keyword" | "meta" | "content" | "links" | "readability";
+    id: "keyword" | "meta" | "content" | "links" | "readability" | "language";
     label: string;
     max: number;
     points: number;
@@ -230,20 +234,20 @@ export function analyzeSeo(input: SeoInput): SeoReport {
     const description = input.seoDescription || input.excerpt;
     const allImages = [...(input.featuredImage ? [{ alt: input.featuredImage.alt, block: -1 }] : []), ...images];
 
-    /* Mot-clé principal (35) */
+    /* Mot-clé principal (30) */
     const noKw = (id: string, label: string, max: number): SeoCheck => check(id, label, max, 0, "Choisis d'abord un mot-clé principal (onglet SEO).", { field: "keywords" });
     let keyword: SeoCheck[];
     if (!main) {
         keyword = [
-            noKw("kw-title", "Dans le titre SEO", 6),
+            noKw("kw-title", "Dans le titre SEO", 5),
             noKw("kw-start", "En début de titre", 3),
-            noKw("kw-slug", "Dans l'adresse", 4),
+            noKw("kw-slug", "Dans l'adresse", 3),
             noKw("kw-desc", "Dans la description", 4),
             noKw("kw-intro", "Dans l'introduction", 5),
             noKw("kw-heading", "Dans un sous-titre", 4),
-            noKw("kw-alt", "Dans un texte alternatif", 3),
-            noKw("kw-density", "Densité", 4),
-            noKw("kw-unique", "Mot-clé unique", 2),
+            noKw("kw-alt", "Dans un texte alternatif", 2),
+            noKw("kw-density", "Densité", 3),
+            noKw("kw-unique", "Mot-clé unique", 1),
         ];
     } else {
         const inTitle = containsKeyword(seoTitle, main);
@@ -262,7 +266,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         const densityRatio = shortText ? (count ? 0.5 : 0) : density >= 0.5 && density <= 2.5 ? 1 : density > 0 ? 0.5 : 0;
         const slugOk = containsKeyword(input.slug.replace(/-/g, " "), main);
         keyword = [
-            check("kw-title", "Dans le titre SEO", 6, inTitle ? 1 : 0, inTitle ? `« ${main} » est dans le titre.` : `Ajoute « ${main} » au titre (ou au titre SEO).`, { field: "seoTitle" }),
+            check("kw-title", "Dans le titre SEO", 5, inTitle ? 1 : 0, inTitle ? `« ${main} » est dans le titre.` : `Ajoute « ${main} » au titre (ou au titre SEO).`, { field: "seoTitle" }),
             check(
                 "kw-start",
                 "En début de titre",
@@ -271,7 +275,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
                 inTitle && startPos <= normalize(seoTitle).length * 0.4 ? "Le mot-clé arrive tôt dans le titre." : "Place le mot-clé au début du titre : Google lui donne plus de poids.",
                 { field: "seoTitle" },
             ),
-            check("kw-slug", "Dans l'adresse", 4, slugOk ? 1 : 0, slugOk ? "L'adresse contient le mot-clé." : "Mets le mot-clé dans l'adresse de l'article (avant la publication).", { field: "slug" }),
+            check("kw-slug", "Dans l'adresse", 3, slugOk ? 1 : 0, slugOk ? "L'adresse contient le mot-clé." : "Mets le mot-clé dans l'adresse de l'article (avant la publication).", { field: "slug" }),
             check(
                 "kw-desc",
                 "Dans la description",
@@ -299,7 +303,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
             check(
                 "kw-alt",
                 "Dans un texte alternatif",
-                3,
+                2,
                 inAlt ? 1 : 0,
                 inAlt ? "Une image décrit le mot-clé." : allImages.length ? "Utilise le mot-clé dans la description (alt) d'une image." : "Ajoute une image décrite avec le mot-clé.",
                 { field: "featured" },
@@ -307,7 +311,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
             check(
                 "kw-density",
                 "Densité",
-                4,
+                3,
                 densityRatio,
                 count === 0
                     ? "Le mot-clé n'apparaît pas dans le texte."
@@ -318,7 +322,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
             check(
                 "kw-unique",
                 "Mot-clé unique",
-                2,
+                1,
                 input.keywordTaken === false ? 1 : input.keywordTaken === true ? 0 : 0.5,
                 input.keywordTaken === true
                     ? "Un autre article vise déjà ce mot-clé : ils vont se concurrencer dans Google."
@@ -354,7 +358,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         ),
     ];
 
-    /* Contenu (20) */
+    /* Contenu (15) */
     const longest = paragraphs.reduce<Block | null>((m, p) => (!m || wordsOf(p.text).length > wordsOf(m.text).length ? p : m), null);
     const longWords = longest ? wordsOf(longest.text).length : 0;
     // Sous-titres : le plus long passage sans sous-titre
@@ -381,14 +385,14 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         check(
             "length",
             "Longueur",
-            6,
+            5,
             words >= 600 ? 1 : words >= 300 ? 0.6 : words >= 150 ? 0.3 : 0,
             `${words} mots ${words >= 600 ? "(au moins 600 : parfait)" : words >= 300 ? ": correct pour une brève, vise 600 pour un article" : ": trop court, vise au moins 600 mots"}.`,
         ),
         check(
             "headings",
             "Sous-titres réguliers",
-            4,
+            3,
             words < 300 ? (headings.length ? 1 : 0.5) : maxRun <= 300 ? 1 : maxRun <= 450 ? 0.5 : 0,
             maxRun <= 300 ? "Un sous-titre au moins tous les 300 mots : facile à parcourir." : `Un passage de ${maxRun} mots sans sous-titre : coupe-le.`,
             worstStart ? { block: worstStart.index } : undefined,
@@ -396,7 +400,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         check(
             "paragraphs",
             "Paragraphes courts",
-            3,
+            2,
             longWords <= 150 ? 1 : longWords <= 200 ? 0.5 : 0,
             longWords <= 150 ? "Les paragraphes sont courts." : `Un paragraphe de ${longWords} mots : coupe-le en deux.`,
             longest && longWords > 150 ? { block: longest.index } : undefined,
@@ -407,7 +411,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         check(
             "alt",
             "Images décrites",
-            3,
+            2,
             !allImages.length ? 0 : missingAlt.length ? 0.3 : 1,
             !allImages.length ? "Pas encore d'image." : missingAlt.length ? `${missingAlt.length} image${missingAlt.length > 1 ? "s" : ""} sans texte alternatif.` : "Toutes les images ont un texte alternatif.",
             missingAlt[0] && missingAlt[0].block >= 0 ? { block: missingAlt[0].block } : { field: "featured" },
@@ -415,7 +419,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         check(
             "modules",
             "Modules complets",
-            2,
+            1,
             modIssues ? 0 : 1,
             modIssues ? `${modIssues} point${modIssues > 1 ? "s" : ""} à compléter dans les modules (onglet Modules).` : input.modules.length ? "Modules complets." : "Pas de module : rien à compléter.",
         ),
@@ -462,7 +466,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         ),
     ];
 
-    /* Lisibilité (15) */
+    /* Lisibilité (10) */
     const sentences = paragraphs.flatMap((p) => sentencesOf(p.text));
     const avg = sentences.length ? sentences.reduce((s, x) => s + wordsOf(x).length, 0) / sentences.length : 0;
     const passive = sentences.filter((s) => PASSIVE.test(s)).length;
@@ -475,14 +479,14 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         check(
             "sentences",
             "Phrases courtes",
-            5,
+            3,
             empty ? 0 : avg <= 20 ? 1 : avg <= 25 ? 0.5 : 0,
             empty ? "Pas encore assez de texte." : `${avg.toFixed(0)} mots par phrase en moyenne ${avg <= 20 ? "(moins de 20 : parfait)" : ": coupe les phrases les plus longues"}.`,
         ),
         check(
             "passive",
             "Voix passive limitée",
-            3,
+            2,
             empty ? 0 : passiveRate <= 0.1 ? 1 : passiveRate <= 0.2 ? 0.5 : 0,
             empty
                 ? "Pas encore assez de texte."
@@ -491,7 +495,7 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         check(
             "transitions",
             "Mots de liaison",
-            3,
+            2,
             empty ? 0 : transitionRate >= 0.25 ? 1 : transitionRate >= 0.1 ? 0.5 : 0,
             empty
                 ? "Pas encore assez de texte."
@@ -500,18 +504,33 @@ export function analyzeSeo(input: SeoInput): SeoReport {
         check(
             "ease",
             "Facile à lire",
-            4,
+            3,
             empty ? 0 : ease >= 60 ? 1 : ease >= 45 ? 0.5 : 0,
             empty ? "Pas encore assez de texte." : `Indice de lisibilité ${ease}/100 ${ease >= 60 ? ": facile à lire pour un collégien ou un lycéen" : ": mots ou phrases un peu longs pour des élèves"}.`,
         ),
     ];
 
+    /* Langue (15) : seules les vraies fautes comptent, avec une marge (les conseils de style jamais) */
+    const lc = input.language;
+    const langCheck = (id: string, label: string, max: number, n: number | undefined, tol: number, none: string, some: (n: number) => string): SeoCheck => {
+        if (words < 30) return check(id, label, max, 0, "Pas encore assez de texte.");
+        if (!lc || n === undefined) return check(id, label, max, 0.5, "Vérification en cours…", { field: "language" });
+        return check(id, label, max, languageRatio(n, tol), n === 0 ? none : some(n), { field: "language" });
+    };
+    const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
+    const language = [
+        langCheck("spelling", "Orthographe", 6, lc?.orthographe, tolerance(words), "Aucun mot inconnu.", (n) => `${plural(n, "mot inconnu", "mots inconnus")} (onglet Langue). Un mot juste mais rare ? Ajoute-le au dictionnaire Workyt.`),
+        langCheck("grammar", "Grammaire", 6, lc?.grammaire, tolerance(words), "Aucune faute d'accord ou de conjugaison repérée.", (n) => `${plural(n, "faute", "fautes")} d'accord, de conjugaison ou de confusion (onglet Langue).`),
+        langCheck("typography", "Typographie", 3, lc?.typographie, tolerance(words, 250), "Typographie propre.", (n) => `${plural(n, "point", "points")} de typographie (majuscules, traits d'union, espaces…).`),
+    ];
+
     const groups = [
-        group("keyword", "Mot-clé principal", 35, keyword),
+        group("keyword", "Mot-clé principal", 30, keyword),
         group("meta", "Titre et description", 15, meta),
-        group("content", "Contenu", 20, content),
+        group("content", "Contenu", 15, content),
         group("links", "Liens", 15, linkChecks),
-        group("readability", "Lisibilité", 15, readability),
+        group("readability", "Lisibilité", 10, readability),
+        group("language", "Langue", 15, language),
     ];
     return {
         score: Math.round(groups.reduce((s, g) => s + g.points, 0)),

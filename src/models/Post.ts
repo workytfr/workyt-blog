@@ -71,6 +71,8 @@ const PostSchema = new Schema(
             canonical: { type: String },
             score: { type: Number },
         },
+        /** Fautes « ignorées » dans le correcteur de langue (règle|passage) : hors de la note */
+        languageIgnores: { type: [String], default: [] },
         /** Contenu pilier : l'assistant SEO propose des liens vers lui (lot 5) */
         isPillar: { type: Boolean, default: false },
 

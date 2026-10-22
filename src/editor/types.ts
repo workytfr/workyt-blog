@@ -19,6 +19,8 @@ export interface EditorPost {
     updatedAt: string;
     modules: import("@/lib/modules/types").ArticleModule[];
     isPillar: boolean;
+    /** Fautes ignorées dans le correcteur de langue (« règle|passage ») */
+    languageIgnores: string[];
 }
 
 /** Journal du circuit (« Camille a renvoyé l'article au rédacteur » + motif) */

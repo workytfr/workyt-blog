@@ -11,6 +11,7 @@ import {
     AlertTriangle,
     ArrowLeft,
     Bold,
+    BookA,
     CalendarClock,
     CheckCircle2,
     Clock,
@@ -67,6 +68,9 @@ import SeoAssistant, { SeoGauge, type LinkSuggestion } from "./SeoAssistant";
 import { analyzeSeo, type SeoTarget } from "@/lib/seo/analyze";
 import type { JSONContent } from "@tiptap/core";
 import { useAffiliateLinks } from "./modules/fields";
+import { countIssues, type LangCategory } from "@/lib/language/core";
+import { fixTypography, languageStorage, replaceText, type PlacedIssue } from "./language/LanguageCheck";
+import { LanguagePopover, LanguageTab, useLanguageState, useWorkytDictionary, type PopoverState } from "./language/LanguagePanel";
 import { hostOf, setEditorAffiliates } from "@/lib/linkIcon";
 
 type SaveState = "saved" | "dirty" | "saving" | "error";
@@ -145,6 +149,18 @@ export default function BlogEditor({
     const [docJson, setDocJson] = useState<JSONContent | null>(post.contentJson);
     const [keywordTaken, setKeywordTaken] = useState<boolean | null>(null);
     const [seoExtra, setSeoExtra] = useState<{ suggestions: LinkSuggestion[]; deadLinks: string[] } | null>(null);
+    // Correcteur de langue : fautes ignorées (enregistrées avec l'article), catégories masquées (ce navigateur)
+    const [ignores, setIgnores] = useState<Set<string>>(() => new Set(post.languageIgnores));
+    const [hidden, setHidden] = useState<Set<LangCategory>>(() => {
+        try {
+            const saved = typeof window === "undefined" ? [] : JSON.parse(localStorage.getItem("wk-lang-hidden") || "[]");
+            return new Set(Array.isArray(saved) ? saved : []);
+        } catch {
+            return new Set();
+        }
+    });
+    const [popover, setPopover] = useState<PopoverState | null>(null);
+    const dictionary = useWorkytDictionary();
     const dirtyFields = useRef<Set<string>>(new Set());
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const saveRef = useRef<() => Promise<boolean>>(async () => true);
@@ -223,6 +239,21 @@ export default function BlogEditor({
         };
     }, [editor]);
 
+    // Correcteur de langue : dictionnaire, alertes ignorées et catégories masquées → nouveaux soulignements
+    const lang = useLanguageState(editor);
+    useEffect(() => {
+        if (!editor) return;
+        const s = languageStorage(editor);
+        s.ctx = { dictionary: new Set((dictionary.entries ?? []).map((e) => e.key)), ignores };
+        s.hidden = hidden;
+        s.onOpen = (issue, rect, mode) => setPopover({ issue, rect, mode });
+        s.refresh();
+    }, [editor, dictionary.entries, ignores, hidden]);
+    // Le correcteur du navigateur s'efface quand Grammalecte est prêt (pas de double soulignement)
+    useEffect(() => {
+        editor?.view.dom.setAttribute("spellcheck", lang.status === "ready" ? "false" : "true");
+    }, [editor, lang.status]);
+
     // Mot-clé principal déjà visé par un autre article ?
     const mainKeyword = meta.seo.focusKeywords[0]?.trim() ?? "";
     useEffect(() => {
@@ -280,6 +311,7 @@ export default function BlogEditor({
             if (fields.has("seo")) body.seo = meta.seo;
             if (fields.has("modules")) body.modules = modules;
             if (fields.has("pillar")) body.isPillar = meta.isPillar;
+            if (fields.has("languageIgnores")) body.languageIgnores = [...ignores];
             setSave("saving");
             try {
                 const r = await fetch(`/api/posts/${post.id}/`, {
@@ -461,12 +493,13 @@ export default function BlogEditor({
         modules,
         keywordTaken: mainKeyword ? keywordTaken : null,
         deadLinks: seoExtra?.deadLinks,
+        language: lang.status === "ready" ? countIssues(lang.issues) : null,
     });
 
     /** « Voir » d'un critère SEO : le champ concerné, ou le bloc du texte */
     const goToTarget = (t: SeoTarget) => {
         if ("field" in t) {
-            const ids = { seoTitle: ["seo", "seo-title"], seoDescription: ["seo", "seo-description"], keywords: ["seo", "seo-keywords"], slug: ["article", "post-slug"], featured: ["article", "featured-alt"] } as const;
+            const ids = { seoTitle: ["seo", "seo-title"], seoDescription: ["seo", "seo-description"], keywords: ["seo", "seo-keywords"], slug: ["article", "post-slug"], featured: ["article", "featured-alt"], language: ["langue", ""] } as const;
             const [tabName, id] = ids[t.field];
             setTab(tabName);
             if (id) setTimeout(() => document.getElementById(id)?.focus(), 50);
@@ -481,6 +514,61 @@ export default function BlogEditor({
         setTimeout(() => dom?.classList.remove("wk-flash"), 1600);
         if (canWrite) editor.commands.setTextSelection(pos + 1);
     };
+
+    /* Correcteur de langue : remplacer, ignorer, ajouter au dictionnaire, aller à la faute */
+    const applyLanguage = (issue: PlacedIssue, text: string) => {
+        if (!editor || !canWrite || issue.from === null || issue.to === null) return;
+        replaceText(editor, issue.from, issue.to, issue.text, text);
+        setPopover(null);
+    };
+    const ignoreLanguage = (issue: PlacedIssue) => {
+        if (!canWrite) return;
+        setIgnores((prev) => new Set(prev).add(issue.key));
+        markDirty("languageIgnores");
+        setPopover(null);
+    };
+    const resetIgnores = () => {
+        if (!canWrite) return;
+        setIgnores(new Set());
+        markDirty("languageIgnores");
+    };
+    const goToIssue = (issue: PlacedIssue) => {
+        if (!editor || issue.from === null || issue.to === null) return goToTarget({ block: issue.block });
+        const { from, to } = issue;
+        editor.chain().setTextSelection({ from, to }).scrollIntoView().run();
+        setTimeout(() => {
+            try {
+                const a = editor.view.coordsAtPos(from);
+                const b = editor.view.coordsAtPos(to);
+                setPopover({ issue, rect: new DOMRect(a.left, a.top, Math.max(1, b.right - a.left), a.bottom - a.top), mode: "issue" });
+            } catch {
+                /* position disparue entre-temps */
+            }
+        }, 260);
+    };
+    const toggleHidden = (c: LangCategory) =>
+        setHidden((prev) => {
+            const next = new Set(prev);
+            if (next.has(c)) next.delete(c);
+            else next.add(c);
+            localStorage.setItem("wk-lang-hidden", JSON.stringify([...next]));
+            return next;
+        });
+    /** Synonymes du mot sélectionné (barre flottante) */
+    const selectionSynonyms = () => {
+        if (!editor) return;
+        const { from, to } = editor.state.selection;
+        const word = editor.state.doc.textBetween(from, to);
+        if (!word.trim() || /\s/.test(word)) return;
+        const a = editor.view.coordsAtPos(from);
+        const b = editor.view.coordsAtPos(to);
+        setPopover({
+            issue: { start: 0, end: word.length, rule: "synonyms", type: "", message: "", suggestions: [], category: "style", text: word, key: "", repetition: true, from, to, block: -1 },
+            rect: new DOMRect(a.left, a.top, Math.max(1, b.right - a.left), a.bottom - a.top),
+            mode: "synonyms",
+        });
+    };
+    const languageBadge = lang.status === "ready" ? lang.issues.filter((i) => i.category === "orthographe" || i.category === "grammaire" || i.category === "typographie").length : 0;
 
     const insertSuggestion = (s: LinkSuggestion) => {
         if (!editor || !canWrite) return;
@@ -521,6 +609,25 @@ export default function BlogEditor({
                 readOnly={!metaWritable}
                 reviewBadge={pendingSuggestions}
                 modulesCount={modules.length}
+                languageBadge={languageBadge}
+                language={
+                    <LanguageTab
+                        issues={lang.issues}
+                        status={lang.status}
+                        typoCount={lang.typoCount}
+                        canWrite={canWrite}
+                        canIgnore={canWrite}
+                        ignoredCount={ignores.size}
+                        hidden={hidden}
+                        onToggleHidden={toggleHidden}
+                        onApply={applyLanguage}
+                        onIgnore={ignoreLanguage}
+                        onResetIgnores={resetIgnores}
+                        onGo={goToIssue}
+                        onFixTypography={() => editor && canWrite && fixTypography(editor)}
+                        dictionary={dictionary}
+                    />
+                }
                 seoAssistant={<SeoAssistant report={seoReport} onTarget={goToTarget} suggestions={seoExtra?.suggestions ?? null} onRefreshSuggestions={() => void loadSeoExtra()} onInsertLink={insertSuggestion} readOnly={!canWrite} />}
                 corrector={
                     taken ? (
@@ -719,6 +826,7 @@ Le texte, les versions, les commentaires et les réactions seront effacés. C'es
                                     <BubbleBar
                                         editor={editor}
                                         formatting={review.mode === "edit" && canWrite}
+                                        onSynonyms={selectionSynonyms}
                                         onComment={() => {
                                             const { from, to } = editor.state.selection;
                                             setPendingAnchor({ from, to, quote: editor.state.doc.textBetween(from, to, " ").slice(0, 300) });
@@ -760,6 +868,18 @@ Le texte, les versions, les commentaires et les réactions seront effacés. C'es
                     setPicker(null);
                 }}
             />
+            {popover && (
+                <LanguagePopover
+                    key={`${popover.issue.key}-${popover.issue.from}-${popover.mode}`}
+                    state={popover}
+                    canWrite={canWrite}
+                    canIgnore={canWrite && popover.issue.rule !== "synonyms"}
+                    onApply={applyLanguage}
+                    onIgnore={ignoreLanguage}
+                    onAddWord={dictionary.add}
+                    onClose={() => setPopover(null)}
+                />
+            )}
             {affiliate && editor && (
                 <AffiliatePicker
                     onClose={() => setAffiliate(false)}
@@ -1042,15 +1162,21 @@ function Toolbar({ editor, onImage, onAffiliate }: { editor: Editor | null; onIm
 }
 
 /** Barre flottante sur une sélection de texte : mise en forme (si on écrit) et « Commenter » */
-function BubbleBar({ editor, formatting, onComment }: { editor: Editor; formatting: boolean; onComment: () => void }) {
+function BubbleBar({ editor, formatting, onComment, onSynonyms }: { editor: Editor; formatting: boolean; onComment: () => void; onSynonyms: () => void }) {
     const s = useEditorState({
         editor,
-        selector: ({ editor: e }) => ({
-            bold: e.isActive("bold"),
-            italic: e.isActive("italic"),
-            link: e.isActive("link"),
-            highlight: e.isActive("highlight"),
-        }),
+        selector: ({ editor: e }) => {
+            const { from, to } = e.state.selection;
+            const picked = e.state.doc.textBetween(from, to);
+            return {
+                bold: e.isActive("bold"),
+                italic: e.isActive("italic"),
+                link: e.isActive("link"),
+                highlight: e.isActive("highlight"),
+                // Un seul mot sélectionné : « Synonymes »
+                word: picked.length > 1 && picked.length <= 40 && /^[\p{L}'’-]+$/u.test(picked),
+            };
+        },
     });
     const c = () => editor.chain().focus();
     return (
@@ -1063,6 +1189,11 @@ function BubbleBar({ editor, formatting, onComment }: { editor: Editor; formatti
                     <Tool icon={Link2} label="Lien" active={s.link} onClick={() => askLink(editor)} />
                     <Sep />
                 </>
+            )}
+            {s.word && (
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onSynonyms} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-ink/75 hover:bg-paper2">
+                    <BookA className="h-4 w-4" /> Synonymes
+                </button>
             )}
             <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={onComment} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-ink/75 hover:bg-paper2">
                 <MessageSquarePlus className="h-4 w-4" /> Commenter

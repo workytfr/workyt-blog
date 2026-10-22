@@ -10,6 +10,7 @@ import { schemaExtensions } from "../extensions";
 import { EditorCallout, EditorFigure, EditorModuleEmbed, EditorSourceRef } from "./nodeViews";
 import { SlashCommand } from "./slash";
 import { SuggestMode } from "./suggestMode";
+import { LanguageCheck } from "./language/LanguageCheck";
 
 /** Saisie « $x^2$ » : devient une formule dans la phrase (« $$…$$ » reste géré par Mathematics) */
 const DollarMath = Extension.create({
@@ -104,6 +105,7 @@ export function editorExtensions(): AnyExtension[] {
         DollarMath,
         LinkIcons,
         SuggestMode,
+        LanguageCheck,
         CharacterCount,
         Placeholder.configure({
             includeChildren: true,

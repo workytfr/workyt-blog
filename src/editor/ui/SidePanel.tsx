@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
-import { AlignCenter, AlignLeft, AlignRight, Camera, ImagePlus, Star, X } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Blocks, Camera, FileText, ImagePlus, MessageSquareText, Puzzle, SpellCheck, Star, TrendingUp, X, type LucideIcon } from "lucide-react";
 import { IMAGE_LICENSES, IMAGE_SOURCES, checkCredit } from "@/lib/licenses";
 import SourceUrlInput from "./SourceUrlInput";
 import { CALLOUT_VARIANTS } from "../nodes";
@@ -26,9 +26,18 @@ export interface PanelState {
 const field = "w-full rounded-xl border border-ink/12 border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-accent";
 const lbl = "text-xs font-semibold text-ink/60";
 
-export type PanelTab = "article" | "seo" | "bloc" | "modules" | "relecture";
+export type PanelTab = "article" | "seo" | "langue" | "bloc" | "modules" | "relecture";
 
-/** Panneau latéral de l'éditeur : Article, SEO, Bloc, Modules, Relecture */
+const TABS: { id: PanelTab; label: string; icon: LucideIcon }[] = [
+    { id: "article", label: "Article", icon: FileText },
+    { id: "seo", label: "SEO", icon: TrendingUp },
+    { id: "langue", label: "Langue", icon: SpellCheck },
+    { id: "bloc", label: "Bloc", icon: Blocks },
+    { id: "modules", label: "Modules", icon: Puzzle },
+    { id: "relecture", label: "Relecture", icon: MessageSquareText },
+];
+
+/** Panneau latéral de l'éditeur : Article, SEO, Langue, Bloc, Modules, Relecture */
 export default function SidePanel({
     editor,
     state,
@@ -47,6 +56,8 @@ export default function SidePanel({
     modulesTab,
     modulesCount,
     seoAssistant,
+    language,
+    languageBadge,
     corrector,
 }: {
     editor: Editor | null;
@@ -68,6 +79,10 @@ export default function SidePanel({
     modulesCount: number;
     /** Assistant SEO (note, critères, suggestions), en tête de l'onglet SEO */
     seoAssistant: React.ReactNode;
+    /** Onglet Langue : correcteur, typographie, dictionnaire Workyt */
+    language: React.ReactNode;
+    /** Fautes comptées dans la note (orthographe, grammaire, typographie) */
+    languageBadge: number;
     /** Correcteur de l'article, en bas de l'onglet Article (hors des champs verrouillés) */
     corrector: React.ReactNode;
     /** Champs verrouillés (lecture, correction en mode suggestion, main prise par un autre) */
@@ -75,33 +90,48 @@ export default function SidePanel({
 }) {
     const setTab = onTab;
     return (
-        <aside className="flex w-[360px] shrink-0 flex-col border-r border-ink/10 bg-paper">
+        <aside className="flex w-[320px] shrink-0 flex-col border-r border-ink/10 bg-paper xl:w-[360px]">
             <div className="border-b border-ink/10 px-5 pb-4 pt-5">
                 <p className="eyebrow">Rédaction</p>
                 <p className="mt-1 text-sm text-ink/55">
                     {words} mot{words > 1 ? "s" : ""} · {Math.max(1, Math.round(words / 220))} min de lecture
                 </p>
-                <div className="mt-3 flex gap-1 rounded-full border border-ink/10 bg-white p-1" role="tablist">
-                    {(
-                        [
-                            ["article", "Article"],
-                            ["seo", "SEO"],
-                            ["bloc", "Bloc"],
-                            ["modules", "Modules"],
-                            ["relecture", "Relecture"],
-                        ] as const
-                    ).map(([id, label]) => (
-                        <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`relative flex-1 rounded-full py-1.5 text-[11px] font-semibold ${tab === id ? "bg-ink text-white" : "text-ink/60"}`}>
-                            {label}
-                            {id === "modules" && modulesCount > 0 && <span className="absolute -right-1 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-sky px-1 text-[9px] text-white">{modulesCount}</span>}
-                            {id === "relecture" && reviewBadge > 0 && <span className="absolute -right-1 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] text-white">{reviewBadge}</span>}
-                        </button>
-                    ))}
+                {/* Onglets : trois par ligne, icône et libellé ; l'onglet ouvert est une carte blanche */}
+                <div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-paper2 p-1" role="tablist" aria-label="Panneau de l'article">
+                    {TABS.map(({ id, label, icon: Icon }) => {
+                        const active = tab === id;
+                        const badge = id === "langue" ? languageBadge : id === "modules" ? modulesCount : id === "relecture" ? reviewBadge : 0;
+                        const badgeTone = id === "langue" ? "bg-[#d92d20]" : id === "modules" ? "bg-sky" : "bg-accent";
+                        return (
+                            <button
+                                key={id}
+                                type="button"
+                                role="tab"
+                                aria-selected={active}
+                                onClick={() => setTab(id)}
+                                className={`group flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 py-2 text-[11.5px] transition xl:text-[12px] ${
+                                    active ? "bg-white font-bold text-ink shadow-[0_2px_0_rgba(26,21,18,.07),0_6px_16px_rgba(26,21,18,.07)]" : "font-semibold text-ink/55 hover:bg-white/60 hover:text-ink"
+                                }`}
+                            >
+                                <span className="relative shrink-0">
+                                    <Icon className={`h-4 w-4 transition ${active ? "text-accent" : "text-ink/40 group-hover:text-ink/65"}`} strokeWidth={active ? 2.3 : 1.9} />
+                                    {badge > 0 && (
+                                        <span className={`absolute -right-2 -top-2 grid h-[15px] min-w-[15px] place-items-center rounded-full px-1 text-[9px] font-bold leading-none text-white ring-2 ${active ? "ring-white" : "ring-paper2"} ${badgeTone}`}>
+                                            {badge > 99 ? "99+" : badge}
+                                        </span>
+                                    )}
+                                </span>
+                                <span className="truncate">{label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
                 {tab === "relecture" ? (
                     review
+                ) : tab === "langue" ? (
+                    language
                 ) : tab === "modules" ? (
                     modulesTab
                 ) : (

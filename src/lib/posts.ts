@@ -143,6 +143,8 @@ export interface SaveInput {
     seo?: { title?: string; description?: string; focusKeywords?: string[]; noindex?: boolean };
     modules?: unknown;
     isPillar?: boolean;
+    /** Fautes ignorées dans le correcteur de langue (« règle|passage ») */
+    languageIgnores?: string[];
 }
 
 /** Identifiant MongoDB valide (paramètre d'URL, champ envoyé) */
@@ -185,7 +187,8 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor, op
     if (mode === "read") throw new PostError("Tu ne peux pas modifier cet article pour l'instant.", 403);
     if (lockedByOther(post, actor.memberId)) throw new PostError(`${post.lock?.name || "Quelqu'un"} est en train de modifier cet article.`, 409);
     // Le correcteur ne touche qu'au texte, en suggestions
-    if (mode === "suggest") input = { contentJson: input.contentJson };
+    // (et peut ignorer une fausse alerte du correcteur de langue)
+    if (mode === "suggest") input = { contentJson: input.contentJson, languageIgnores: input.languageIgnores };
 
     // Une version par séance d'édition : l'état d'avant, dès qu'une autre personne s'y met, après une étape ou après 30 min
     if (!opts.skipSession && (input.contentJson || typeof input.title === "string") && post.contentJson) {
@@ -283,6 +286,10 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor, op
     }
     // Contenu pilier : l'assistant SEO propose des liens vers lui depuis les autres articles
     if (typeof input.isPillar === "boolean" && mode === "edit") post.isPillar = input.isPillar;
+
+    if (Array.isArray(input.languageIgnores)) {
+        post.set("languageIgnores", [...new Set(input.languageIgnores.filter((k): k is string => typeof k === "string" && k.length <= 160))].slice(-500));
+    }
 
     // Note SEO (§ 10.3) enregistrée avec l'article : filtre « score < 60 » du dashboard
     post.set("seo.score", (await seoReportFor(post)).score);

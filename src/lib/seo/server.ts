@@ -4,6 +4,9 @@ import type { JSONContent } from "@tiptap/core";
 import { connectDB } from "../db";
 import { normalize, analyzeSeo, type SeoReport } from "./analyze";
 import type { ArticleModule } from "../modules/types";
+import { documentCounts, jsonBlocks, type LangCounts } from "../language/core";
+import { checkTexts } from "../language/engine";
+import { dictionaryKeys } from "../language/dictionary";
 import Post from "@/models/Post";
 import AffiliateLink from "@/models/AffiliateLink";
 
@@ -40,11 +43,24 @@ type PostLike = {
     featuredImage?: { alt?: string | null } | null;
     modules?: unknown;
     seo?: { title?: string | null; description?: string | null; focusKeywords?: string[] | null } | null;
+    languageIgnores?: string[] | null;
 };
+
+/** Fautes de langue de l'article (mêmes règles que l'éditeur), null si le correcteur est indisponible */
+export async function languageCounts(doc: JSONContent | null, ignores: string[]): Promise<LangCounts | null> {
+    const blocks = jsonBlocks(doc);
+    const [results, dictionary] = await Promise.all([checkTexts(blocks.map((b) => b.text)), dictionaryKeys()]);
+    return results ? documentCounts(blocks, results, { dictionary, ignores: new Set(ignores) }) : null;
+}
 
 export async function seoReportFor(post: PostLike): Promise<SeoReport> {
     const keywords = post.seo?.focusKeywords ?? [];
-    const [owner, deadLinks] = await Promise.all([keywords[0] ? keywordOwner(keywords[0], String(post._id)) : null, deadAffiliateHrefs()]);
+    const doc = (post.contentJson as JSONContent) ?? null;
+    const [owner, deadLinks, language] = await Promise.all([
+        keywords[0] ? keywordOwner(keywords[0], String(post._id)) : null,
+        deadAffiliateHrefs(),
+        languageCounts(doc, post.languageIgnores ?? []).catch(() => null),
+    ]);
     return analyzeSeo({
         title: post.title,
         seoTitle: post.seo?.title ?? "",
@@ -52,11 +68,12 @@ export async function seoReportFor(post: PostLike): Promise<SeoReport> {
         excerpt: post.excerpt ?? "",
         slug: post.slug,
         keywords,
-        doc: (post.contentJson as JSONContent) ?? null,
+        doc,
         featuredImage: post.featuredImage ? { alt: post.featuredImage.alt ?? "" } : null,
         modules: (post.modules ?? []) as ArticleModule[],
         keywordTaken: keywords[0] ? !!owner : null,
         deadLinks,
+        language,
     });
 }
 

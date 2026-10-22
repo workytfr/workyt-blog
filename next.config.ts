@@ -56,6 +56,8 @@ const nextConfig: NextConfig = {
     // Format attendu par l'hébergeur (comme workyt-next)
     output: "standalone",
     outputFileTracingRoot: import.meta.dirname,
+    // Correcteur de langue : le serveur lit Grammalecte sur le disque pour la note SEO enregistrée
+    outputFileTracingIncludes: { "/api/posts/**": ["./public/grammalecte-2.3.0/**/*"] },
     // Les adresses WordPress finissent toutes par « / » : on garde la même forme
     // (les fichiers .xml/.txt ne sont pas concernés).
     trailingSlash: true,
