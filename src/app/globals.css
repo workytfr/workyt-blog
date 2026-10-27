@@ -594,6 +594,17 @@ html.dark :is(.bg-sun, .bg-leaf, .bg-sky, .wk-on-light) {
     border-radius: 999px;
     background: #ff6a1a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z'/><circle cx='12' cy='13' r='3'/></svg>") center / 11px no-repeat;
 }
+/* Pastille cliquable : page du photographe ou de la photo */
+.post-content a.credit,
+html.dark .post-content a.credit {
+    color: rgb(var(--c-ink));
+    text-decoration: none;
+}
+.post-content a.credit:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
 .post-content .credit-lic {
     font-weight: 500;
     color: rgb(var(--c-ink) / 0.5);

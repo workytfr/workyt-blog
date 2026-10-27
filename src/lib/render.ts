@@ -114,7 +114,7 @@ function render(html: string, opts: RenderOptions): { html: string; toc: TocItem
     // Logo du site à droite des liens : sur le blog seulement (pas dans le flux RSS, où les adresses relatives casseraient)
     const withIcons = wrapTables(wrapQuotes(wrapHeadings(opts.linkIcons ? addLinkIcons(anchored, opts.affiliates) : anchored)));
     // Lettrine sur le premier paragraphe du texte (pas celui d'une citation, d'un encadré, d'une liste…)
-    const out = withLead(renderCitations(renderMath(withIcons), opts.sourceIds ?? []));
+    const out = withLead(renderCitations(renderMath(figureCredits(withIcons)), opts.sourceIds ?? []));
     return { html: opts.responsiveImages ? withSrcset(out) : out, toc };
 }
 
@@ -170,6 +170,52 @@ export function withoutLeadingImage(html: string, url: string): string {
 
 /** Même fichier, aux paramètres d'adresse près */
 const sameImage = (a: string, b: string) => a.split("?")[0] === b.split("?")[0];
+
+/* ─── Crédits des images ─── */
+
+/** Mots d'une mention de photo (« Photo de X sur Unsplash », « Image by X from Pixabay », « CR : X © »…) */
+const ATTRIBUTION_WORDS = /\b(photos?|photographie|photographe|images?|illustrations?|credits?|cr|source|sources|de|du|des|d|par|sur|by|on|from|via|chez|licence|license|libre|droits|com|fr|www)\b/g;
+
+const plainWords = (s: string) =>
+    s
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, " ");
+
+/**
+ * Légende qui ne fait que répéter le crédit de l'image (« Photo de Greg
+ * Rosenke sur Unsplash » sous la pastille « Greg Rosenke · Unsplash ») : elle
+ * venait de WordPress, où le crédit s'écrivait en légende. Une légende qui dit
+ * autre chose (« Sagrada Familia, crédit : Léo Thomas ») est gardée.
+ */
+export function captionRepeatsCredit(caption: string, author: string, source: string): boolean {
+    if (!author.trim()) return false;
+    let rest = ` ${plainWords(caption)} `;
+    const a = plainWords(author).trim();
+    if (!a || !rest.includes(` ${a} `)) return false;
+    for (const part of [a, plainWords(source).trim(), "pexels", "unsplash", "pixabay", "wikimedia commons", "wikimedia", "freepik", "vecteezy", "magnific"].filter(Boolean)) rest = rest.split(` ${part} `).join(" ");
+    return !/[\p{L}\p{N}]/u.test(rest.replace(ATTRIBUTION_WORDS, " "));
+}
+
+/**
+ * Images du texte : la pastille de crédit mène à la page du photographe (ou
+ * de la photo) quand on la connaît, et la légende qui répète le crédit n'est
+ * pas affichée deux fois.
+ */
+function figureCredits(html: string): string {
+    return html.replace(/<figure\b[^>]*class="wk-figure"[^>]*>[\s\S]*?<\/figure>/g, (fig) => {
+        const span = /<span\b([^>]*\bclass="credit"[^>]*)>([^<]*)(<span class="credit-lic">[^<]*<\/span>)?<\/span>/.exec(fig);
+        if (!span) return fig;
+        const attr = (name: string) => decodeEntities(span[1].match(new RegExp(`\\s${name}="([^"]*)"`))?.[1] ?? "");
+        const url = attr("data-url");
+        let out = fig;
+        if (/^https?:\/\//i.test(url)) out = out.replace(span[0], `<a class="credit" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer nofollow">${span[2]}${span[3] ?? ""}</a>`);
+        const caption = /<figcaption>([\s\S]*?)<\/figcaption>/.exec(out);
+        if (caption && captionRepeatsCredit(decodeEntities(caption[1].replace(/<[^>]+>/g, "")), attr("data-author"), attr("data-source"))) out = out.replace(caption[0], "");
+        return out;
+    });
+}
 
 /* ─── Sommaire ─── */
 
