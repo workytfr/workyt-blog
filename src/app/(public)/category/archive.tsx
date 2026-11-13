@@ -1,3 +1,4 @@
+import CategoryIcon from "@/components/CategoryIcon";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { childCategoryIds, getCategoryBySlug, listPosts } from "@/lib/content";
@@ -27,7 +28,7 @@ export default async function CategoryArchive({ slug, page }: { slug: string; pa
     return (
         <>
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(categoryJsonLd(cat)) }} />
-            <Archive eyebrow="Rubrique" title={cat.name} description={cat.description} list={list} base={`/category/${cat.slug}/`} />
+            <Archive eyebrow="Rubrique" icon={<CategoryIcon slug={cat.slug} className="h-10 w-10 sm:h-12 sm:w-12" color={cat.color} soft />} title={cat.name} description={cat.description} list={list} base={`/category/${cat.slug}/`} />
         </>
     );
 }

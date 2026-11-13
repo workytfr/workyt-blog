@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronDown, Menu, Rss, Search, X } from "lucide-react";
+import CategoryIcon from "@/components/CategoryIcon";
 import { siDiscord, siInstagram, siLinkedin, siTiktok, siX, siYoutube } from "simple-icons";
 import { getSettings } from "@/lib/settings";
 import { SITE, WORKYT_LINKS } from "@/lib/site";
@@ -71,6 +72,7 @@ export default async function SiteHeader() {
                             <div key={c.id} className="group relative flex items-center">
                                 {i > 0 && <span className="mx-0.5 h-1 w-1 rounded-full bg-ink/25" aria-hidden />}
                                 <Link href={`/category/${c.slug}/`} className="flex items-center gap-1 whitespace-nowrap rounded-full px-3.5 py-2 text-[13.5px] font-medium text-ink/65 transition hover:bg-paper2 hover:text-ink">
+                                    <CategoryIcon slug={c.slug} className="h-4 w-4" color={c.color} />
                                     {c.name}
                                     {c.children.length > 0 && <ChevronDown className="h-3.5 w-3.5 opacity-50" />}
                                 </Link>
@@ -79,7 +81,7 @@ export default async function SiteHeader() {
                                         <div className="rounded-2xl border border-ink/10 bg-white p-2 shadow-[0_18px_44px_rgba(26,21,18,.12)]">
                                             {c.children.map((k) => (
                                                 <Link key={k.id} href={`/category/${k.slug}/`} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-paper2">
-                                                    <span className="h-2 w-2 rounded-full" style={{ background: k.color }} />
+                                                    <CategoryIcon slug={k.slug} className="h-4 w-4" color={k.color} />
                                                     {k.name}
                                                 </Link>
                                             ))}
@@ -117,11 +119,12 @@ export default async function SiteHeader() {
                                 {menu.map((c) => (
                                     <div key={c.id}>
                                         <Link href={`/category/${c.slug}/`} className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold hover:bg-paper2">
-                                            <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.color }} />
+                                            <CategoryIcon slug={c.slug} className="h-[18px] w-[18px]" color={c.color} />
                                             {c.name}
                                         </Link>
                                         {c.children.map((k) => (
-                                            <Link key={k.id} href={`/category/${k.slug}/`} className="ml-5 block rounded-xl px-2 py-1.5 text-sm text-ink/70 hover:bg-paper2">
+                                            <Link key={k.id} href={`/category/${k.slug}/`} className="ml-5 flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm text-ink/70 hover:bg-paper2">
+                                                <CategoryIcon slug={k.slug} className="h-4 w-4" color={k.color} />
                                                 {k.name}
                                             </Link>
                                         ))}

@@ -21,6 +21,7 @@ export default function Archive({
     title,
     description,
     header,
+    icon,
     list,
     base,
     query,
@@ -30,6 +31,8 @@ export default function Archive({
     description?: string;
     /** En-tête personnalisé (page auteur) à la place du titre */
     header?: React.ReactNode;
+    /** Icône devant le titre (rubrique) */
+    icon?: React.ReactNode;
     list: PostList;
     base: string;
     query?: string;
@@ -42,7 +45,10 @@ export default function Archive({
                 {header ?? (
                     <header>
                         <p className="eyebrow">{eyebrow}</p>
-                        <h1 className="mt-2 font-display text-[44px] leading-[1.05] tracking-tight sm:text-[52px]">{title}</h1>
+                        <h1 className="mt-2 flex items-center gap-3 font-display text-[44px] leading-[1.05] tracking-tight sm:text-[52px]">
+                            {icon}
+                            {title}
+                        </h1>
                         {description && <p className="mt-3 max-w-2xl text-[16px] leading-relaxed text-ink/65">{description}</p>}
                     </header>
                 )}

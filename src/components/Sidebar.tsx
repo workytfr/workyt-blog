@@ -1,3 +1,4 @@
+import CategoryIcon from "@/components/CategoryIcon";
 import Image from "next/image";
 import Link from "next/link";
 import { categoriesWithCounts, mostReadPosts } from "@/lib/content";
@@ -52,7 +53,7 @@ export default async function Sidebar() {
                             {cats.map((c) => (
                                 <li key={c.id} className="flex items-center justify-between">
                                     <Link href={`/category/${c.slug}/`} className="flex items-center gap-2 hover:text-accentdark">
-                                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.color }} />
+                                        <CategoryIcon slug={c.slug} className="h-[18px] w-[18px]" color={c.color} />
                                         {c.name}
                                     </Link>
                                     <span className="chip !py-0">{c.count}</span>

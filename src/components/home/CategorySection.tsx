@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
+import CategoryIcon from "@/components/CategoryIcon";
 import type { CategoryView, PostCardView } from "@/lib/content";
 
 /**
@@ -86,6 +87,7 @@ export default function CategorySection({
     const categoryCard = (
         <div key="category" className="relative order-first flex flex-col overflow-hidden rounded-[30px] p-5 lg:order-none lg:col-span-3" style={{ background: tint(category.color, "52", "#fff1d6") }}>
             <span className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/25" aria-hidden />
+            <CategoryIcon slug={category.slug} className="absolute right-4 top-4 h-10 w-10 text-ink/85" soft />
             <p className="relative text-[11px] font-bold uppercase tracking-[0.14em] text-ink/65">
                 {count} article{count > 1 ? "s" : ""}
             </p>

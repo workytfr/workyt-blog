@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Camera } from "lucide-react";
+import CategoryIcon from "@/components/CategoryIcon";
 import type { AuthorView, CategoryView, ImageView } from "@/lib/content";
 
 /** Pastille de rubrique, à la couleur de la rubrique */
@@ -15,7 +16,7 @@ export function CategoryPill({ category, variant = "solid" }: { category: Catego
                     : { background: "rgba(253,250,244,.92)", color: "#1a1512" }
             }
         >
-            {variant === "soft" && <span className="mr-1.5 h-2 w-2 rounded-full" style={{ background: category.color }} />}
+            <CategoryIcon slug={category.slug} className="mr-1.5 h-3.5 w-3.5" color={variant === "soft" ? category.color : undefined} />
             {category.name}
         </Link>
     );
