@@ -46,7 +46,8 @@
     "sanitize-html": "^2.14.0",
     "server-only": "^0.0.1",
     "sharp": "^0.35.5",
-    "simple-icons": "^13.21.0"
+    "simple-icons": "^13.21.0",
+    "workyt-icons": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22",
