@@ -24,6 +24,9 @@ import PostCard from "@/components/PostCard";
 import ViewCounter from "@/components/ViewCounter";
 import TableZoom from "@/components/TableZoom";
 import EmbedLoader from "@/components/EmbedLoader";
+import Script from "next/script";
+import { PONDA, categoryHref, isPondaPost } from "@/lib/ponda";
+import { VOKYT, renderVokyt } from "@/lib/vokyt";
 
 /**
  * Mise en page d'un article (Pixwell au style Workyt) : héros avec l'image à
@@ -54,7 +57,10 @@ export default async function PostArticle({
     const sources = post.modules.flatMap((m) => (m.type === "sources" ? m.data.items : []));
     // Sommaire : carte avant le premier titre, et version collante dans la colonne
     const { html, toc } = renderArticle(post.contentHtml, { linkIcons: true, sourceIds: sources.map((s) => s.id), affiliates: post.affiliates, featuredUrl: img?.url, responsiveImages: true });
-    const parts = splitAtModules(html);
+    // Extraits audio Vokyt : le lecteur remplace le bloc, après l'assainissement
+    const audio = await renderVokyt(html);
+    const parts = splitAtModules(audio.html);
+    const ponda = isPondaPost(post);
     const placed = new Set(parts.flatMap((p) => ("moduleId" in p ? [p.moduleId] : [])));
     const byId = new Map(post.modules.map((m) => [m.id, m]));
     const atEnd = post.modules.filter((m) => !placed.has(m.id) && m.type !== "sources");
@@ -70,11 +76,15 @@ export default async function PostArticle({
             {!preview && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(postJsonLd(post, comments, social)) }} />}
             {!preview && <ViewCounter postId={post.id} />}
 
+            {/* Épisode de Ponda Podcast : toute la page passe en noir et blanc (globals.css) */}
+            {ponda && <span className="ponda-scope" hidden />}
+            {audio.count > 0 && <Script src={VOKYT.playerScript} data-key={VOKYT.publicKey || undefined} strategy="afterInteractive" />}
+
             {/* ─── Héros : image à la une derrière le titre (Pixwell) ─── */}
             {/* Toute la largeur de l'écran (petite marge), le titre aligné sur le contenu */}
             <section className="mt-3 px-2 sm:mt-4 sm:px-4 lg:px-5">
                 <div className="relative min-h-[460px] overflow-hidden rounded-[26px] bg-ink sm:min-h-[520px] sm:rounded-[36px] lg:h-[620px]">
-                    {img && <Image src={img.url} alt={img.alt} fill preload sizes="100vw" className="object-cover" />}
+                    {img && <Image src={img.url} alt={img.alt} fill fetchPriority="high" loading="eager" sizes="100vw" className="object-cover" />}
                     <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/25" />
                     <div className="relative mx-auto flex h-full min-h-[460px] max-w-[1360px] flex-col px-5 pb-12 pt-6 text-white sm:min-h-[520px] sm:px-8 sm:pb-16 sm:pt-8 lg:min-h-0">
                         <nav className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-white/75" aria-label="Fil d'Ariane">
@@ -82,7 +92,7 @@ export default async function PostArticle({
                             {post.primaryCategory && (
                                 <>
                                     <ChevronRight className="h-3 w-3" />
-                                    <Link href={`/category/${post.primaryCategory.slug}/`}>{post.primaryCategory.name}</Link>
+                                    <Link href={categoryHref(post.primaryCategory.slug)}>{post.primaryCategory.name}</Link>
                                 </>
                             )}
                             <ChevronRight className="h-3 w-3" />
@@ -123,7 +133,7 @@ export default async function PostArticle({
                                     <Clock className="h-4 w-4" />
                                     {post.readingMinutes} min de lecture
                                 </span>
-                                <a href="#commentaires" className="flex items-center gap-1.5">
+                                <a href="#commentaires" className="-my-2 flex min-h-11 min-w-11 items-center gap-1.5">
                                     <MessageCircle className="h-4 w-4" />
                                     {post.commentCount}
                                 </a>
@@ -140,6 +150,16 @@ export default async function PostArticle({
                     <div className="grid gap-8 lg:grid-cols-[42px_minmax(0,1fr)]">
                         <ShareBar url={url} title={post.title} image={img?.url} />
                         <article className="wk-counter min-w-0">
+                            {ponda && (
+                                <Link href={PONDA.path} className="ponda-band mb-8 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[22px] border border-ink/15 bg-white px-5 py-4">
+                                    {/* eslint-disable-next-line @next/next/no-img-element -- logo SVG, déjà léger */}
+                                    <img src={PONDA.logo} alt={PONDA.name} width={1716} height={417} className="h-9 w-auto dark:invert" />
+                                    <span className="text-sm text-ink/70">Un épisode de l&apos;émission du blog Workyt.</span>
+                                    <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold">
+                                        Tous les épisodes <ArrowRight className="h-4 w-4" />
+                                    </span>
+                                </Link>
+                            )}
                             {affiliate && (
                                 <p className="mb-6 rounded-2xl border border-sun/50 bg-sun/15 px-4 py-3 text-sm text-ink/75">
                                     <b>Transparence :</b> cet article contient des liens sponsorisés. Si tu achètes en passant par eux, Workyt peut toucher une petite commission, sans

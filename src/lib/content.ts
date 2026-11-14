@@ -13,6 +13,7 @@ import Tag from "@/models/Tag";
 import Author from "@/models/Author";
 import Member from "@/models/Member";
 import { containsRegex } from "./searchRegex";
+import { PONDA } from "./ponda";
 
 /* ─── Formes envoyées aux pages (sérialisables) ─── */
 
@@ -267,6 +268,10 @@ export async function listPosts(
         search?: string;
         contains?: string;
         after?: Date;
+        /** Articles qui ont un extrait audio (Vokyt) */
+        hasAudio?: boolean;
+        /** Rubriques à écarter */
+        notCategoryIds?: (Types.ObjectId | string)[];
         /** false : pas de comptage (total = nombre d'articles renvoyés, une seule page) */
         withTotal?: boolean;
     } = {}
@@ -286,6 +291,8 @@ export async function listPosts(
         const re = containsRegex(opts.contains);
         extra.$and = [{ $or: [{ title: re }, { excerpt: re }] }];
     }
+    if (opts.hasAudio) extra.hasAudio = true;
+    if (opts.notCategoryIds?.length) extra.categories = { ...((extra.categories as object) ?? {}), $nin: opts.notCategoryIds };
     if (opts.after) extra.publishedAt = { $gt: opts.after, $lte: new Date() };
     const filter = publishedFilter(extra);
     const [docs, total] = await Promise.all([
@@ -335,6 +342,25 @@ export const getCategoryBySlug = cache(async (slug: string) => {
     await connectDB();
     const c = await Category.findOne({ slug }).lean();
     return c ? { ...toCategory(c), seo: { title: c.seo?.title, description: c.seo?.description, noindex: !!c.seo?.noindex } } : null;
+});
+
+/**
+ * Rubrique « Ponda Podcast » : créée à la première visite de sa page si elle
+ * n'existe pas encore (hors du menu des rubriques : elle a son propre lien).
+ */
+export const getPondaCategory = cache(async (): Promise<CategoryView | null> => {
+    try {
+        await connectDB();
+        const c = await Category.findOneAndUpdate(
+            { slug: PONDA.slug },
+            { $setOnInsert: { name: PONDA.name, description: PONDA.description, color: "#1a1512", inMenu: false, order: 99 } },
+            { upsert: true, new: true }
+        ).lean();
+        return c ? toCategory(c) : null;
+    } catch (error) {
+        console.error("[ponda] rubrique indisponible :", (error as Error).message);
+        return null;
+    }
 });
 
 export async function childCategoryIds(parentId: string): Promise<string[]> {

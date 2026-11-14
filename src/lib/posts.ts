@@ -3,6 +3,9 @@ import mongoose from "mongoose";
 import type { JSONContent } from "@tiptap/core";
 import { connectDB } from "./db";
 import { revalidatePath } from "next/cache";
+import { PONDA } from "./ponda";
+import { pingIndexNow } from "./indexnow";
+import { absoluteUrl } from "./site";
 import { slugFollowsTitle, slugify } from "./slug";
 import { can, type Role } from "./roles";
 import { documentImages, documentText, documentToHtml, withSafeUrls } from "@/editor/html";
@@ -163,17 +166,19 @@ export async function revalidatePostPages(post: { slug: string; categories?: unk
     const paths = [
         ...[post.slug, ...oldSlugs].map((s) => `/${s}`),
         "/",
-        ...cats.map((c) => `/category/${c.slug}`),
+        ...cats.map((c) => (c.slug === PONDA.slug ? "/ponda-podcast" : `/category/${c.slug}`)),
         ...tags.map((t) => `/tag/${t.slug}`),
         ...authors.map((a) => `/author/${a.slug}`),
     ];
     try {
         for (const p of new Set(paths)) revalidatePath(p);
         // Pages 2, 3… des listes : l'article y décale tout le monde (motifs de route, d'où « page »)
-        for (const pattern of ["/(public)/page/[n]", "/(public)/category/[slug]/page/[n]", "/(public)/tag/[slug]/page/[n]", "/(public)/author/[slug]/page/[n]"]) revalidatePath(pattern, "page");
+        for (const pattern of ["/(public)/page/[n]", "/(public)/category/[slug]/page/[n]", "/(public)/tag/[slug]/page/[n]", "/(public)/author/[slug]/page/[n]", "/(public)/ponda-podcast/page/[n]"]) revalidatePath(pattern, "page");
     } catch {
         /* hors requête (tests, scripts) */
     }
+    // Bing, Yandex, Seznam… apprennent tout de suite que ces pages ont changé
+    pingIndexNow([...new Set(paths)].map((p) => absoluteUrl(p)));
 }
 
 /** Enregistre les champs envoyés (enregistrement automatique de l'éditeur) */
@@ -232,6 +237,7 @@ export async function savePost(id: string, rawInput: SaveInput, actor: Actor, op
         // Le HTML public ne montre jamais les suggestions en cours ni les commentaires
         post.contentHtml = documentToHtml(withoutSuggestions(doc));
         post.readingMinutes = readingMinutes(post.contentHtml);
+        post.hasAudio = /\bdata-vokyt="note_/.test(post.contentHtml);
         post.pendingSuggestions = documentSuggestions(doc).length;
     }
 

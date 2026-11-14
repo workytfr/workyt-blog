@@ -1415,3 +1415,81 @@ html.dark .bg-leaf\/15 {
 @keyframes wk-rx-spin {
     to { transform: rotate(360deg) scale(1.15); }
 }
+
+/* ─── Ponda Podcast : noir et blanc (le panda) ───
+   La page de l'émission et ses épisodes posent un repère « .ponda-scope » :
+   toute la page, en-tête et pied compris, passe en noir et blanc. */
+html:has(.ponda-scope) {
+    --c-ink: 0 0 0;
+    --c-paper: 255 255 255;
+    --c-paper2: 240 240 240;
+    --c-surface: 255 255 255;
+    --c-night: 0 0 0;
+    --c-peach: 232 232 232;
+    --c-skysoft: 238 238 238;
+    --c-cream: 245 245 245;
+    --c-postit: 245 245 245;
+}
+/* Photos, logos, pastilles et lecteurs intégrés en noir et blanc. Pas de filtre sur toute la page :
+   les intervenants d'un extrait audio gardent leur couleur dans la transcription (lecteur Vokyt). */
+html:has(.ponda-scope) :is(img, picture, video, iframe, svg, .cat-pill, .bg-sun, .bg-leaf, .bg-sky, .bg-accent, .bg-accentdark, [style*="background"]):not(vokyt-player, vokyt-player *) {
+    filter: grayscale(1);
+}
+html.dark:has(.ponda-scope) {
+    --c-ink: 255 255 255;
+    --c-paper: 0 0 0;
+    --c-paper2: 28 28 28;
+    --c-surface: 14 14 14;
+    --c-night: 22 22 22;
+    --c-peach: 40 40 40;
+    --c-skysoft: 34 34 34;
+    --c-cream: 30 30 30;
+    --c-postit: 30 30 30;
+}
+/* Les accents orange deviendraient un gris peu lisible : ils passent à l'encre */
+html:has(.ponda-scope) :is(.text-accentdark, .text-accent, .hover\:text-accentdark:hover, .group:hover .group-hover\:text-accentdark, .eyebrow) {
+    color: rgb(var(--c-ink));
+}
+html:has(.ponda-scope) :is(.hover\:text-accentdark:hover, .group:hover .group-hover\:text-accentdark) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+html:has(.ponda-scope) :is(.btn-orange, .bg-accentdark, .bg-accent) {
+    background-color: rgb(var(--c-ink));
+    color: rgb(var(--c-paper));
+}
+html:has(.ponda-scope) .post-content a:not(.credit) {
+    color: rgb(var(--c-ink));
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+html:has(.ponda-scope) .ponda-band:hover {
+    border-color: rgb(var(--c-ink));
+}
+
+/* Extrait audio Vokyt : dans l'éditeur, une carte qui tient la place du lecteur */
+.wk-editor .wk-vokyt {
+    margin: 1.2em 0;
+    border-radius: 18px;
+    border: 1px dashed rgb(var(--c-ink) / 0.25);
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 600;
+}
+.wk-editor .wk-vokyt::before {
+    content: "🎙 Extrait audio Vokyt · " attr(data-vokyt) " · le lecteur s'affiche sur l'article publié";
+}
+.wk-editor .wk-vokyt.ProseMirror-selectednode {
+    border-style: solid;
+    border-color: rgb(var(--c-ink) / 0.6);
+}
+/* « hidden » : le lecteur se masque lui-même quand le vocal est indisponible */
+.post-content vokyt-player:not([hidden]) {
+    display: block;
+    margin: 1.6em 0;
+}
+/* Lecteur Vokyt sur Ponda Podcast : bouton et forme d'onde à l'encre (les liens y sont noirs) */
+html:has(.ponda-scope) vokyt-player {
+    --vokyt-accent: rgb(var(--c-ink));
+    --vokyt-accent-ink: rgb(var(--c-paper));
+}

@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ChevronDown, Menu, Rss, Search, X } from "lucide-react";
+import { ChevronDown, Menu, Mic, Rss, Search, X } from "lucide-react";
 import CategoryIcon from "@/components/CategoryIcon";
 import { siDiscord, siInstagram, siLinkedin, siTiktok, siX, siYoutube } from "simple-icons";
 import { getSettings } from "@/lib/settings";
 import { SITE, WORKYT_LINKS } from "@/lib/site";
 import { menuCategories } from "@/lib/content";
+import { PONDA } from "@/lib/ponda";
 import { BrandIcon } from "./ui";
 import AuthButton from "./AuthButton";
 import ThemeToggle from "./ThemeToggle";
@@ -50,12 +51,18 @@ export default async function SiteHeader() {
                         ))}
                     </nav>
                     <div className="ml-auto flex items-center gap-3.5">
+                        {/* L'émission du blog : ici, la barre des rubriques n'a plus de place */}
+                        <Link href={PONDA.path} className="flex items-center gap-1.5 font-semibold text-ink/80 hover:text-ink">
+                            <Mic className="h-3.5 w-3.5" aria-hidden />
+                            {PONDA.name}
+                        </Link>
                         {socials.map((k) => (
                             <a key={k} href={social[k]} target="_blank" rel="noopener noreferrer" className="hover:text-ink" title={SOCIAL_ICONS[k].title}>
                                 <BrandIcon path={SOCIAL_ICONS[k].path} color="currentColor" size={14} title={SOCIAL_ICONS[k].title} />
                             </a>
                         ))}
-                        <Link href="/feed/" title="Flux RSS" aria-label="Flux RSS" className="hover:text-ink">
+                        {/* Sans préchargement : Next téléchargeait le flux entier (~90 Ko) sur chaque page */}
+                        <Link href="/feed/" prefetch={false} title="Flux RSS" aria-label="Flux RSS" className="hover:text-ink">
                             <Rss className="h-3.5 w-3.5" aria-hidden />
                         </Link>
                     </div>
@@ -67,7 +74,7 @@ export default async function SiteHeader() {
                 <div className="mx-auto flex max-w-[1240px] items-center gap-2 rounded-full border border-ink/10 bg-paper/85 py-2 pl-2 pr-2 sm:gap-3 sm:pl-3 shadow-[0_10px_30px_rgba(26,21,18,.06)] backdrop-blur-md">
                     <BlogLogo compact />
 
-                    <nav className="mx-auto hidden items-center rounded-full bg-white px-1.5 py-1 ring-1 ring-ink/5 lg:flex" aria-label="Rubriques">
+                    <nav className="mx-auto hidden items-center rounded-full bg-white px-1.5 py-1 ring-1 ring-ink/5 xl:flex" aria-label="Rubriques">
                         {menu.map((c, i) => (
                             <div key={c.id} className="group relative flex items-center">
                                 {i > 0 && <span className="mx-0.5 h-1 w-1 rounded-full bg-ink/25" aria-hidden />}
@@ -92,7 +99,7 @@ export default async function SiteHeader() {
                         ))}
                     </nav>
 
-                    <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:ml-0">
+                    <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 xl:ml-0">
                         {/* Recherche (/?s= comme WordPress) ; sur mobile, elle est dans le menu */}
                         <details className="group relative hidden sm:block">
                             <summary className={roundBtn} aria-label="Rechercher">
@@ -109,7 +116,7 @@ export default async function SiteHeader() {
                         <AuthButton />
 
                         {/* Menu mobile (sans JavaScript) */}
-                        <details className="group relative lg:hidden">
+                        <details className="group relative xl:hidden">
                             <summary className={roundBtn} aria-label="Menu">
                                 <Menu className="h-[18px] w-[18px] group-open:hidden" />
                                 <X className="hidden h-[18px] w-[18px] group-open:block" />
@@ -130,6 +137,10 @@ export default async function SiteHeader() {
                                         ))}
                                     </div>
                                 ))}
+                                <Link href={PONDA.path} className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold hover:bg-paper2">
+                                    <Mic className="h-[18px] w-[18px]" aria-hidden />
+                                    {PONDA.name}
+                                </Link>
                                 <form action="/" role="search" className="mt-3 border-t border-ink/10 px-1 pt-3">
                                     <input type="search" name="s" placeholder="Rechercher un article…" aria-label="Rechercher un article" className="w-full rounded-full border border-ink/15 px-4 py-2 text-sm outline-none focus:border-accent focus-visible:ring-2 focus-visible:ring-accentdark" />
                                 </form>

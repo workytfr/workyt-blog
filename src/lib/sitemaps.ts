@@ -3,6 +3,7 @@ import type { Types } from "mongoose";
 import { connectDB } from "./db";
 import { memoized } from "./content";
 import { SITE, absoluteUrl } from "./site";
+import { categoryHref } from "./ponda";
 import Post from "@/models/Post";
 import Category from "@/models/Category";
 import Author from "@/models/Author";
@@ -85,7 +86,7 @@ async function categoryEntries(): Promise<Entry[]> {
     return cats.flatMap((c) => {
         if (c.seo?.noindex) return [];
         const lastmod = latest([last.get(String(c._id)), ...cats.filter((k) => k.parent && String(k.parent) === String(c._id)).map((k) => last.get(String(k._id)))]);
-        return lastmod ? [{ loc: absoluteUrl(`/category/${c.slug}/`), lastmod }] : [];
+        return lastmod ? [{ loc: absoluteUrl(categoryHref(c.slug)), lastmod }] : [];
     });
 }
 

@@ -49,7 +49,8 @@ import {
 } from "lucide-react";
 import type { MediaView } from "@/lib/media";
 import { editorExtensions } from "./editorExtensions";
-import { PICK_IMAGE_EVENT } from "./slash";
+import { PICK_IMAGE_EVENT, PICK_VOKYT_EVENT } from "./slash";
+import VokytRecorder from "./VokytRecorder";
 import MediaPicker from "./MediaPicker";
 import TableMenu from "./TableMenu";
 import SidePanel, { type PanelState, type PanelTab } from "./SidePanel";
@@ -418,6 +419,14 @@ export default function BlogEditor({
         const open = () => setPicker("content");
         window.addEventListener(PICK_IMAGE_EVENT, open);
         return () => window.removeEventListener(PICK_IMAGE_EVENT, open);
+    }, []);
+
+    // … ou un extrait audio : fenêtre d'enregistrement Vokyt
+    const [vokytOpen, setVokytOpen] = useState(false);
+    useEffect(() => {
+        const open = () => setVokytOpen(true);
+        window.addEventListener(PICK_VOKYT_EVENT, open);
+        return () => window.removeEventListener(PICK_VOKYT_EVENT, open);
     }, []);
 
     const insertMedia = (m: MediaView) => {
@@ -867,6 +876,12 @@ Le texte, les versions, les commentaires et les réactions seront effacés. C'es
                     else insertMedia(m);
                     setPicker(null);
                 }}
+            />
+            <VokytRecorder
+                open={vokytOpen}
+                postId={post.id}
+                onClose={() => setVokytOpen(false)}
+                onInsert={(noteId) => editor?.chain().focus().insertContent({ type: "vokytNote", attrs: { noteId } }).run()}
             />
             {popover && (
                 <LanguagePopover

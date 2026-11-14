@@ -108,9 +108,8 @@ export default function Comments({ postId, slug, initial }: { postId: string; sl
 
             {/* Écrire */}
             <div className="mt-5">
-                {status === "loading" ? (
-                    <div className="h-[132px] animate-pulse rounded-[24px] bg-paper2" />
-                ) : logged ? (
+                {/* Visiteur non connecté par défaut (le cas courant) : pas de bloc d'attente, donc pas de saut de mise en page */}
+                {logged ? (
                     <div className="flex gap-3 rounded-[24px] border border-ink/10 bg-white p-4 sm:p-5">
                         {/* eslint-disable-next-line @next/next/no-img-element -- avatar workyt.fr */}
                         {user?.image ? <img src={user.image} alt="" className="h-10 w-10 shrink-0 rounded-full bg-paper2 object-cover" /> : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent font-bold text-white">{(user?.name || "?").charAt(0)}</span>}

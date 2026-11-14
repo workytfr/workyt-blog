@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SITE, absoluteUrl, pageTitle } from "./site";
 import type { AuthorView, CategoryView, PostView } from "./content";
 import { citationJsonLd, moduleJsonLd } from "./modules/jsonld";
+import { PONDA, categoryHref, isPondaPost } from "./ponda";
 
 /**
  * Métadonnées et données structurées, au plus près de ce que Rank Math
@@ -22,9 +23,40 @@ function feeds(category?: { path: string; name: string }) {
     };
 }
 
+const plain = (html: string) =>
+    html
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;|&#160;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;|&#x27;|&rsquo;/g, "'")
+        .replace(/\s+/g, " ")
+        .trim();
+const letters = (s: string) => s.normalize("NFD").replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
+
+/**
+ * Description d'un article pour les moteurs : la description SEO, sinon
+ * l'extrait. Un extrait repris de WordPress commence souvent par le premier
+ * intertitre collé à la phrase (« Une langue qui change On a parfois… ») :
+ * l'intertitre est retiré, la description commence à la première phrase.
+ */
+export function postDescription(post: Pick<PostView, "excerpt" | "contentHtml" | "seo">): string {
+    if (post.seo.description) return post.seo.description;
+    const excerpt = post.excerpt.trim();
+    const heading = /^\s*(?:<(?!p\b|h[1-6]\b)[^>]+>\s*)*<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/i.exec(post.contentHtml);
+    const want = heading ? letters(plain(heading[2])) : "";
+    if (!want || !letters(excerpt).startsWith(want)) return excerpt;
+    // Fin de l'intertitre dans l'extrait : on avance jusqu'à avoir lu toutes ses lettres
+    let seen = 0;
+    let end = 0;
+    while (end < excerpt.length && seen < want.length) seen += letters(excerpt[end++]).length;
+    const rest = excerpt.slice(end).replace(/^[\s:.!?…»"'’-]+/, "");
+    return rest.length >= 50 ? rest : excerpt;
+}
+
 export function postMetadata(post: PostView): Metadata {
     const title = pageTitle(post.seo.title || post.title);
-    const description = post.seo.description || post.excerpt;
+    const description = postDescription(post);
     const url = post.seo.canonical || absoluteUrl(`/${post.slug}/`);
     // Carte de partage en JPEG 1200 × 630 (photo + titre), lue par tous les réseaux (pas le WebP brut)
     const card = { url: absoluteUrl(`/og/${encodeURIComponent(post.slug)}/`), width: 1200, height: 630, alt: post.featuredImage?.alt || post.title, type: "image/jpeg" };
@@ -144,7 +176,26 @@ export function postJsonLd(post: PostView, comments: JsonLdComment[] = [], socia
     const moduleNodes = post.modules.map((m) => moduleJsonLd(m, modCtx)).filter((n): n is Record<string, unknown> => n !== null);
     const citations = citationJsonLd(post.modules.flatMap((m) => (m.type === "sources" ? m.data.items : [])));
     const crumbs: { name: string; path: string }[] = [{ name: SITE.name, path: "/" }];
-    if (post.primaryCategory) crumbs.push({ name: post.primaryCategory.name, path: `/category/${post.primaryCategory.slug}/` });
+    if (post.primaryCategory) crumbs.push({ name: post.primaryCategory.name, path: categoryHref(post.primaryCategory.slug) });
+    // Épisode de Ponda Podcast : l'épisode et son émission, avec le lien d'écoute (Spotify) s'il est dans l'article
+    const listen = isPondaPost(post) ? /<div\b[^>]*\bdata-embed="spotify"[^>]*>/.exec(post.contentHtml)?.[0].match(/\bdata-src="(https:\/\/open\.spotify\.com\/[^"]+)"/)?.[1] : undefined;
+    const episode = isPondaPost(post)
+        ? [
+              {
+                  "@type": "PodcastEpisode",
+                  "@id": `${url}#episode`,
+                  url,
+                  name: post.title,
+                  description: postDescription(post),
+                  datePublished: post.publishedAt,
+                  inLanguage: "fr-FR",
+                  mainEntityOfPage: url,
+                  ...(listen ? { sameAs: [listen.replace(/&amp;/g, "&")] } : {}),
+                  partOfSeries: { "@id": PONDA_SERIES_ID },
+              },
+              pondaSeries(),
+          ]
+        : [];
     crumbs.push({ name: post.title, path: `/${post.slug}/` });
     const img = post.featuredImage;
     return {
@@ -157,7 +208,7 @@ export function postJsonLd(post: PostView, comments: JsonLdComment[] = [], socia
                 "@type": "Article",
                 "@id": `${url}#article`,
                 headline: post.seo.title || post.title,
-                description: post.seo.description || post.excerpt,
+                description: postDescription(post),
                 datePublished: post.publishedAt,
                 dateModified: post.modifiedAt,
                 // Même adresse que la balise canonical
@@ -187,6 +238,43 @@ export function postJsonLd(post: PostView, comments: JsonLdComment[] = [], socia
                     : undefined,
             },
             ...moduleNodes,
+            ...episode,
+        ],
+    };
+}
+
+const PONDA_SERIES_ID = `${SITE.url}${PONDA.path}#podcast`;
+
+/** L'émission Ponda Podcast */
+function pondaSeries() {
+    return {
+        "@type": "PodcastSeries",
+        "@id": PONDA_SERIES_ID,
+        name: PONDA.name,
+        description: PONDA.description,
+        url: absoluteUrl(PONDA.path),
+        image: `${SITE.url}${PONDA.logo}`,
+        inLanguage: "fr-FR",
+        webFeed: absoluteUrl(`/category/${PONDA.slug}/feed/`),
+        publisher: { "@id": `${SITE.url}/#organization` },
+    };
+}
+
+/** Page de l'émission : la série, ses derniers épisodes et le fil d'Ariane */
+export function pondaJsonLd(episodes: { slug: string; title: string; publishedAt: string }[]) {
+    return {
+        "@context": "https://schema.org",
+        "@graph": [
+            organization(),
+            pondaSeries(),
+            breadcrumbJsonLd([{ name: SITE.name, path: "/" }, { name: PONDA.name, path: PONDA.path }]),
+            ...episodes.map((e) => ({
+                "@type": "PodcastEpisode",
+                url: absoluteUrl(`/${e.slug}/`),
+                name: e.title,
+                datePublished: e.publishedAt,
+                partOfSeries: { "@id": PONDA_SERIES_ID },
+            })),
         ],
     };
 }

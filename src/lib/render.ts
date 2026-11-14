@@ -19,7 +19,7 @@ const SANITIZE: sanitizeHtml.IOptions = {
         video: ["src", "controls", "poster", "preload"],
         source: ["src", "type"],
         figure: ["class", "data-media-id"],
-        div: ["class", "data-type", "data-latex", "data-youtube-video", "data-module", "data-embed", "data-src"],
+        div: ["class", "data-type", "data-latex", "data-youtube-video", "data-module", "data-embed", "data-src", "data-vokyt"],
         sup: ["class", "data-source"],
         span: ["class", "data-type", "data-latex", "data-author", "data-source", "data-license", "data-url"],
         aside: ["class", "data-variant"],
@@ -40,7 +40,7 @@ const SANITIZE: sanitizeHtml.IOptions = {
     },
     allowedClasses: {
         figure: ["wk-figure"],
-        div: ["wk-figure-media", "wk-video", "wk-module-slot", "wk-embed"],
+        div: ["wk-figure-media", "wk-video", "wk-module-slot", "wk-embed", "wk-vokyt"],
         sup: ["wk-cite"],
         span: ["credit", "credit-lic", "wk-h"],
         aside: ["wk-callout", "wk-callout--*"],

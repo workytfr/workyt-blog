@@ -8,6 +8,7 @@ import {
     AlertTriangle,
     Clapperboard,
     Instagram,
+    Mic,
     Music,
     Video,
     BookOpen,
@@ -64,6 +65,9 @@ const embed = (provider: EmbedProvider) => (editor: Editor, range?: Range) => {
     editor.chain().focus().insertContent({ type: "socialEmbed", attrs: { provider, url: found.url } }).run();
 };
 
+/** Demande un extrait audio à l'éditeur parent (il ouvre la fenêtre d'enregistrement Vokyt) */
+export const PICK_VOKYT_EVENT = "wk-editor:pick-vokyt";
+
 /** Demande l'image à l'éditeur parent (il ouvre la médiathèque) */
 export const PICK_IMAGE_EVENT = "wk-editor:pick-image";
 
@@ -93,6 +97,10 @@ export const BLOCK_ITEMS: BlockItem[] = [
         if (src) chain(e, r).setYoutubeVideo({ src }).run();
     } },
     { title: "Spotify", hint: EMBED_PROVIDERS.spotify.hint, icon: Music, group: "Médias", keywords: "spotify musique podcast playlist album son", run: embed("spotify") },
+    { title: "Extrait audio", hint: "Enregistrer ou envoyer un vocal Vokyt", icon: Mic, group: "Médias", keywords: "vokyt audio vocal podcast extrait son ponda voix enregistrer micro", run: (e, r) => {
+        if (r) e.chain().focus().deleteRange(r).run();
+        window.dispatchEvent(new Event(PICK_VOKYT_EVENT));
+    } },
     { title: "Dailymotion", hint: EMBED_PROVIDERS.dailymotion.hint, icon: Clapperboard, group: "Médias", keywords: "dailymotion video", run: embed("dailymotion") },
     { title: "Instagram", hint: EMBED_PROVIDERS.instagram.hint, icon: Instagram, group: "Médias", keywords: "instagram post reel photo reseau", run: embed("instagram") },
     { title: "TikTok", hint: EMBED_PROVIDERS.tiktok.hint, icon: Video, group: "Médias", keywords: "tiktok video reseau", run: embed("tiktok") },

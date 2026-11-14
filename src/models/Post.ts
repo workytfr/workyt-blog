@@ -81,6 +81,8 @@ const PostSchema = new Schema(
         modifiedAt: { type: Date },
         scheduledAt: { type: Date },
         readingMinutes: { type: Number, default: 1 },
+        /** Le contenu a au moins un extrait audio Vokyt (liste « Articles à écouter » de Ponda Podcast) */
+        hasAudio: { type: Boolean, default: false },
         views: { type: Number, default: 0 },
         commentCount: { type: Number, default: 0 },
         /** Totaux des réactions (« Quelle est ta réaction ? ») : clé de réaction → nombre */
@@ -140,6 +142,7 @@ PostSchema.index({ authors: 1, status: 1, publishedAt: -1 });
 PostSchema.index({ status: 1, scheduledAt: 1 });
 PostSchema.index({ "modules.data.guest.memberId": 1 });
 PostSchema.index({ contributors: 1, status: 1, publishedAt: -1 });
+PostSchema.index({ hasAudio: 1, status: 1, publishedAt: -1 }, { partialFilterExpression: { hasAudio: true } });
 // Les plus lus (accueil, colonne)
 PostSchema.index({ status: 1, views: -1 });
 PostSchema.index({ title: "text", excerpt: "text" }, { default_language: "french" });

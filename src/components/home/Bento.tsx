@@ -57,7 +57,7 @@ export default function Bento({ posts, corner, mirror = false, priority = true }
         <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[300px_230px] 2xl:grid-rows-[370px_280px] 2xl:gap-5">
             {/* 1. Grande carte photo, titre dans l'encoche */}
             <article className={`group relative min-h-[420px] overflow-hidden rounded-[30px] bg-paper2 ${at.main}`}>
-                {main.featuredImage && <Image src={main.featuredImage.url} alt={main.featuredImage.alt} fill preload={priority} sizes="(min-width: 1536px) 660px, (min-width: 1024px) 520px, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />}
+                {main.featuredImage && <Image src={main.featuredImage.url} alt={main.featuredImage.alt} fill fetchPriority={priority ? "high" : undefined} loading={priority ? "eager" : undefined} sizes="(min-width: 1536px) 660px, (min-width: 1024px) 520px, 100vw" className="object-cover transition duration-700 group-hover:scale-[1.03]" />}
                 <span className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/80 text-accent backdrop-blur" role="img" aria-label={mirror ? "Nouveau" : "À la une"} title={mirror ? "Nouveau" : "À la une"}>
                     {mirror ? <Sparkles className="h-5 w-5" /> : <Flame className="h-5 w-5" />}
                 </span>

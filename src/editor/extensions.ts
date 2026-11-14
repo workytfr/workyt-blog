@@ -8,7 +8,7 @@ import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import Youtube from "@tiptap/extension-youtube";
 import { Mathematics } from "@tiptap/extension-mathematics";
-import { Callout, Figure, ModuleEmbed, SocialEmbed, SourceRef } from "./nodes";
+import { Callout, Figure, ModuleEmbed, SocialEmbed, SourceRef, VokytNote } from "./nodes";
 import { CommentMark, SuggestionDelete, SuggestionInsert } from "./marks";
 
 /**
@@ -51,6 +51,7 @@ export function schemaExtensions(): AnyExtension[] {
         Callout,
         ModuleEmbed,
         SocialEmbed,
+        VokytNote,
         SourceRef,
         SuggestionInsert,
         SuggestionDelete,

@@ -30,20 +30,24 @@ const origin = (url: string | undefined) => {
 };
 const workyt = origin(process.env.WORKYT_URL || "https://workyt.fr");
 const umami = origin(process.env.NEXT_PUBLIC_UMAMI_URL);
+// Extraits audio des articles (lecteur, API et statistiques d'écoute)
+const vokyt = origin(process.env.VOKYT_URL || "https://vokyt.cc");
+// Dépôt des fichiers audio envoyés depuis l'éditeur (adresse signée du stockage de Vokyt)
+const vokytUpload = origin(process.env.VOKYT_UPLOAD_URL || "https://s3.vokyt.cc");
 const dev = process.env.NODE_ENV !== "production";
 // Lecteurs intégrés (src/lib/render.ts, src/lib/embeds.ts)
 const frameHosts = ["https://www.youtube-nocookie.com", "https://www.youtube.com", "https://player.vimeo.com", "https://www.dailymotion.com", "https://open.spotify.com", "https://www.instagram.com", "https://www.tiktok.com"];
 const cspBase = ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'self'", `form-action 'self' ${workyt}`];
 const cspFull = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""} ${umami}`,
+    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""} ${umami} ${vokyt}`,
     // KaTeX, styles en ligne de React et de l'éditeur
     "style-src 'self' 'unsafe-inline'",
     // Images des articles : médiathèque, anciens contenus WordPress, banques d'images…
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "media-src 'self' https:",
-    `connect-src 'self' ${umami}${dev ? " ws:" : ""}`,
+    `connect-src 'self' ${umami} ${vokyt} ${vokytUpload}${dev ? " ws:" : ""}`,
     `frame-src 'self' ${frameHosts.join(" ")}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
@@ -62,10 +66,17 @@ const nextConfig: NextConfig = {
     // (les fichiers .xml/.txt ne sont pas concernés).
     trailingSlash: true,
     images: {
+        // Une image d'article ne change pas : 31 jours (4 h par défaut), le serveur la recalcule moins souvent
+        minimumCacheTTL: 2678400,
         remotePatterns: mediaHosts.map((hostname) => ({ protocol: "https", hostname, pathname: "/**" })),
     },
     async redirects() {
         return [
+            // Ponda Podcast a sa page : l'adresse de rubrique y renvoie (le flux /category/ponda-podcast/feed/ reste servi)
+            { source: "/category/ponda-podcast", destination: "/ponda-podcast/", permanent: true },
+            { source: "/category/ponda-podcast/page/:n", destination: "/ponda-podcast/page/:n/", permanent: true },
+            // Les navigateurs et les robots demandent encore /favicon.ico
+            { source: "/favicon.ico", destination: "/icon1.ico", permanent: true },
             // Rank Math servait aussi sitemap.xml : on renvoie vers l'index
             { source: "/sitemap.xml", destination: "/sitemap_index.xml", permanent: true },
             // Anciennes formes d'adresses WordPress / Pixwell
@@ -93,6 +104,11 @@ const nextConfig: NextConfig = {
     async headers() {
         return [
             {
+                // Logos et icônes de /public (pas les fichiers de Next, déjà en cache définitif) : 30 jours dans le navigateur (ils étaient redemandés toutes les 4 h)
+                source: "/:file((?!_next/).+\.(?:svg|png|ico|ttf))",
+                headers: [{ key: "Cache-Control", value: "public, max-age=2592000, stale-while-revalidate=86400" }],
+            },
+            {
                 source: "/:path*",
                 headers: [
                     { key: "X-Content-Type-Options", value: "nosniff" },
@@ -101,7 +117,8 @@ const nextConfig: NextConfig = {
                     // HTTPS obligatoire pendant un an, sous-domaines compris (pas de « preload » : irréversible)
                     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
                     // Fonctions du navigateur inutiles au blog ; plein écran et lecture auto restent permis aux lecteurs intégrés
-                    { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
+                    // Micro : le site lui-même seulement (enregistrement des extraits audio dans l'éditeur)
+                    { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), browsing-topics=()" },
                     { key: "Content-Security-Policy", value: csp(cspBase) },
                     { key: "Content-Security-Policy-Report-Only", value: csp(cspFull) },
                 ],

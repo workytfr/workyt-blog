@@ -2,13 +2,15 @@ import Link from "next/link";
 import { Camera } from "lucide-react";
 import CategoryIcon from "@/components/CategoryIcon";
 import type { AuthorView, CategoryView, ImageView } from "@/lib/content";
+import { categoryHref } from "@/lib/ponda";
 
 /** Pastille de rubrique, à la couleur de la rubrique */
 export function CategoryPill({ category, variant = "solid" }: { category: CategoryView; variant?: "solid" | "soft" }) {
-    const dark = ["#1a1512", "#ff6a1a", "#c24a0a", "#e5484d", "#6b3fbf"].includes(category.color.toLowerCase());
+    // Fond assez sombre pour un texte blanc (l'orange #ff6a1a ne l'est pas : contraste insuffisant)
+    const dark = ["#1a1512", "#c24a0a", "#e5484d", "#6b3fbf"].includes(category.color.toLowerCase());
     return (
         <Link
-            href={`/category/${category.slug}/`}
+            href={categoryHref(category.slug)}
             className="cat-pill relative z-10"
             style={
                 variant === "solid"

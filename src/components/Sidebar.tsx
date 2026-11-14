@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { categoriesWithCounts, mostReadPosts } from "@/lib/content";
 import { SITE } from "@/lib/site";
+import { categoryHref } from "@/lib/ponda";
 
 /** Colonne de widgets (Pixwell) : présentation, les plus lus, newsletter, rubriques */
 export default async function Sidebar() {
@@ -52,7 +53,7 @@ export default async function Sidebar() {
                         <ul className="mt-3 space-y-2 text-sm">
                             {cats.map((c) => (
                                 <li key={c.id} className="flex items-center justify-between">
-                                    <Link href={`/category/${c.slug}/`} className="flex items-center gap-2 hover:text-accentdark">
+                                    <Link href={categoryHref(c.slug)} className="flex items-center gap-2 hover:text-accentdark">
                                         <CategoryIcon slug={c.slug} className="h-[18px] w-[18px]" color={c.color} />
                                         {c.name}
                                     </Link>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LEGAL_LINKS, WORKYT_LINKS } from "@/lib/site";
 import { menuCategories } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
+import { PONDA } from "@/lib/ponda";
 import { BlogLogo } from "./SiteHeader";
 import { ConsentSettingsButton } from "./ReplayConsent";
 
@@ -25,6 +26,11 @@ export default async function SiteFooter() {
                                 </Link>
                             </li>
                         ))}
+                        <li>
+                            <Link href={PONDA.path} className="hover:text-white">
+                                {PONDA.name}
+                            </Link>
+                        </li>
                     </ul>
                 </div>
                 <div>
@@ -50,7 +56,8 @@ export default async function SiteFooter() {
                             </li>
                         ))}
                         <li>
-                            <Link href="/feed/" className="hover:text-white">
+                            {/* Sans préchargement : Next téléchargeait le flux entier sur chaque page */}
+                            <Link href="/feed/" prefetch={false} className="hover:text-white">
                                 Flux RSS
                             </Link>
                         </li>

@@ -241,6 +241,44 @@ export const SocialEmbed = Node.create({
     },
 });
 
+/* ─── Extrait audio Vokyt ─── */
+
+/** Identifiant d'un vocal Vokyt, lu dans un identifiant ou un lien d'écoute (vokyt.cc/ecouter/note_…) */
+export function parseVokytNote(raw: string): string | null {
+    return /\bnote_[A-Za-z0-9]{4,40}\b/.exec(raw.trim())?.[0] ?? null;
+}
+
+/**
+ * Bloc « extrait audio » : un vocal Vokyt, lu au fil du défilement de
+ * l'article avec sa transcription. Dans le document : l'identifiant du vocal ;
+ * le lecteur est mis à l'affichage (lib/vokyt).
+ */
+export const VokytNote = Node.create({
+    name: "vokytNote",
+    group: "block",
+    atom: true,
+    draggable: true,
+    selectable: true,
+
+    addAttributes() {
+        return {
+            noteId: {
+                default: "",
+                parseHTML: (el) => parseVokytNote(el.getAttribute("data-vokyt") || "") || "",
+                renderHTML: (a) => ({ "data-vokyt": a.noteId }),
+            },
+        };
+    },
+
+    parseHTML() {
+        return [{ tag: "div[data-vokyt]" }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ["div", mergeAttributes(HTMLAttributes, { class: "wk-vokyt" })];
+    },
+});
+
 /**
  * Appel de source « [1] » dans le texte : renvoie à une référence du module
  * Sources (numérotée à l'affichage, dans l'ordre de la liste).
