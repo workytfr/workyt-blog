@@ -38,7 +38,7 @@ export default async function PondaPage({ page }: { page: number }) {
 
     return (
         <>
-            {/* Toute la page passe en noir et blanc (globals.css) */}
+            {/* Contenu de la page en noir et blanc (globals.css) */}
             <span className="ponda-scope" hidden />
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(pondaJsonLd(episodes.items)) }} />
 
@@ -56,10 +56,13 @@ export default async function PondaPage({ page }: { page: number }) {
                         <p className="mt-7 max-w-2xl text-[17px] leading-relaxed text-white/80">
                             Des épisodes courts ou longs, selon les sujets, à écouter et à lire. Dans les articles, des extraits audio se lancent au fil de la lecture.
                         </p>
-                        <p className="mt-6 text-sm text-white/60">
-                            {episodes.total} épisode{episodes.total > 1 ? "s" : ""}
-                            {page > 1 && ` · page ${page} sur ${episodes.pages}`}
-                        </p>
+                        {/* Pas de « 0 épisode » tant que l'émission démarre */}
+                        {episodes.total > 0 && (
+                            <p className="mt-6 text-sm text-white/60">
+                                {episodes.total} épisode{episodes.total > 1 ? "s" : ""}
+                                {page > 1 && ` · page ${page} sur ${episodes.pages}`}
+                            </p>
+                        )}
                     </div>
                 </div>
             </section>
