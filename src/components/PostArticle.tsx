@@ -76,8 +76,6 @@ export default async function PostArticle({
             {!preview && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(postJsonLd(post, comments, social)) }} />}
             {!preview && <ViewCounter postId={post.id} />}
 
-            {/* Épisode de Ponda Podcast : contenu en noir et blanc (globals.css) */}
-            {ponda && <span className="ponda-scope" hidden />}
             {audio.count > 0 && <Script src={VOKYT.playerScript} data-key={VOKYT.publicKey || undefined} strategy="afterInteractive" />}
 
             {/* ─── Héros : image à la une derrière le titre (Pixwell) ─── */}

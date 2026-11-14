@@ -12,6 +12,8 @@ import { Icon } from "workyt-icons/react";
 const BLOG_SLUGS: Record<string, string> = {
     technologie: "codworkyt",
     technologies: "codworkyt",
+    // Ponda Podcast : le casque d'écoute
+    "ponda-podcast": "ecoute",
 };
 
 export default function CategoryIcon({
