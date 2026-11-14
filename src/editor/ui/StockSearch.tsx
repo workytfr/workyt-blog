@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, Check, ExternalLink, Loader2, Search } from "lucide-react";
 import type { MediaView } from "@/lib/media";
+import { readApi } from "@/lib/apiResponse";
 import type { StockPhoto, StockProvider } from "@/lib/stock";
 
 const NAMES: Record<StockProvider, string> = { pixabay: "Pixabay", pexels: "Pexels" };
@@ -29,7 +30,7 @@ export default function StockSearch({ onImported }: { onImported: (m: MediaView)
     // Banques configurées (clés d'API présentes sur le serveur)
     useEffect(() => {
         void fetch("/api/stock/")
-            .then((r) => r.json())
+            .then((r) => readApi<{ providers: StockProvider[] }>(r))
             .then((j) => {
                 const list: StockProvider[] = j.success ? j.data.providers : [];
                 setProviders(list);
@@ -48,7 +49,7 @@ export default function StockSearch({ onImported }: { onImported: (m: MediaView)
         setLoading(true);
         setError(null);
         try {
-            const j = await fetch(`/api/stock/?${new URLSearchParams({ provider, q: query, page: String(page) })}`).then((r) => r.json());
+            const j = await fetch(`/api/stock/?${new URLSearchParams({ provider, q: query, page: String(page) })}`).then((r) => readApi<{ items: StockPhoto[]; total: number }>(r));
             if (id !== reqId.current) return;
             if (!j.success) throw new Error(j.error);
             const key = `${provider}:${query}`;
@@ -73,9 +74,9 @@ export default function StockSearch({ onImported }: { onImported: (m: MediaView)
         setImporting(true);
         setError(null);
         try {
-            const j = await fetch("/api/stock/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: selected.provider, id: selected.id, alt }) }).then((r) => r.json());
+            const j = await fetch("/api/stock/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: selected.provider, id: selected.id, alt }) }).then((r) => readApi<MediaView>(r));
             if (!j.success) throw new Error(j.error);
-            onImported(j.data as MediaView);
+            onImported(j.data);
         } catch (e) {
             setError((e as Error).message || "Import impossible.");
         } finally {

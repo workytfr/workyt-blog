@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AlertTriangle, Check, Globe, ImagePlus, Loader2, Search, ShieldCheck, Upload, X } from "lucide-react";
 import { IMAGE_LICENSES, IMAGE_SOURCES, PROOF_REQUIRED, checkCredit } from "@/lib/licenses";
 import type { MediaView } from "@/lib/media";
+import { readApi } from "@/lib/apiResponse";
 import StockSearch from "./StockSearch";
 import SourceUrlInput from "./SourceUrlInput";
 
@@ -147,7 +148,7 @@ export function UploadForm({ onDone }: { onDone: (m: MediaView) => void }) {
         Object.entries(credit).forEach(([k, v]) => fd.append(k, v));
         try {
             const r = await fetch("/api/media/", { method: "POST", body: fd });
-            const j = await r.json();
+            const j = await readApi<MediaView>(r);
             if (!j.success) throw new Error(j.error || "Envoi impossible.");
             onDone(j.data);
         } catch (err) {
